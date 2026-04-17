@@ -16,8 +16,8 @@ interface Message {
     page: number;
     similarity: number;
     match_metadata?: any;
-    text?: string; // We will expand this to show the raw text
   }[];
+  isDivider?: boolean;
 }
 
 const App: React.FC = () => {
@@ -87,17 +87,22 @@ const App: React.FC = () => {
     }
   };
 
-  const handleTopicClick = async (topic: {page: number, title: string}, index: number) => {
-    if (!topicId || isChatting) return;
+  const handleTopicClick = async (topic: any, index: number) => {
     setActiveTopicIndex(index);
-    const question = `Explain: ${topic.title}`;
-    const userMessage: Message = { role: 'user', content: question };
-    setMessages(prev => [...prev, userMessage]);
+    if (isChatting) return;
+
+    // Insert a divider and the user's implicit question
+    const dividerMsg: Message = { role: 'assistant', content: `--- Switched Topic to: ${topic.title} ---`, isDivider: true };
+    const questionText = `Explain: ${topic.title}`;
+    const tempMsg: Message = { role: 'user', content: questionText };
+    
+    setMessages(prev => [...prev, dividerMsg, tempMsg]);
     setIsChatting(true);
+
     try {
       const response = await axios.post('/api/chat', {
         topic_id: topicId,
-        question,
+        question: questionText,
         conversation_history: messages.map(m => ({ role: m.role, content: m.content }))
       });
       const assistantMessage: Message = {
@@ -226,19 +231,32 @@ const App: React.FC = () => {
           <div className="flex flex-col flex-1 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-thin">
               <AnimatePresence>
-                {messages.map((msg, idx) => (
+                {messages.map((msg, idx) => {
+                  if (msg.isDivider) {
+                    return (
+                      <div key={idx} className="flex items-center mx-auto max-w-3xl py-4 opacity-50">
+                        <div className="flex-1 border-t border-slate-300"></div>
+                        <span className="px-4 text-xs font-semibold text-slate-400 tracking-wider uppercase">{msg.content.replace(/---/g, '')}</span>
+                        <div className="flex-1 border-t border-slate-300"></div>
+                      </div>
+                    );
+                  }
+                  return (
                   <motion.div key={idx} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl mx-auto space-y-2">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       {msg.role === 'user' ? 'Student (You):' : 'AI Tutor'}
                     </p>
-                    <div className="text-slate-700 leading-relaxed text-sm">
+                    <div className="text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">
                       {msg.content}
                     </div>
                     {msg.image && (
-                      <img src={msg.image.url} alt={msg.image.title} className="max-w-md rounded-lg border border-slate-100 shadow-sm mt-4" />
+                      <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-2 shadow-sm inline-block">
+                        <img src={msg.image.url} alt={msg.image.title} className="max-w-md rounded-lg" />
+                        <p className="text-xs text-center text-slate-500 mt-2 italic font-medium px-2 pb-1">{msg.image.title}</p>
+                      </div>
                     )}
                   </motion.div>
-                ))}
+                )})}
               </AnimatePresence>
               <div ref={chatEndRef} />
             </div>
@@ -278,11 +296,11 @@ const App: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto space-y-6 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto space-y-8 pb-4 scrollbar-thin">
               {activeSources.map((s, i) => (
-                <div key={i} className="space-y-2">
-                  <p className="text-[10px] font-bold text-indigo-600 uppercase">Page {s.page}</p>
-                  <div className="bg-blue-50/50 border-l-2 border-indigo-400 p-3 text-xs text-slate-600 leading-relaxed">
+                <div key={i} className="space-y-3 pb-6 border-b border-slate-100 last:border-0">
+                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">Page {s.page}</p>
+                  <div className="bg-slate-50 border-l-4 border-indigo-400 p-4 text-sm text-slate-600 leading-relaxed shadow-sm rounded-r-md">
                     {s.text}
                   </div>
                 </div>

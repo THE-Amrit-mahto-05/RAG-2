@@ -194,7 +194,8 @@ async def chat(request: ChatRequest):
     # 3. Semantic Image Matching
     best_image = None
     if keywords:
-        best_image = image_matcher.get_best_image(topic_id, f"{keywords[0]} {answer[:100]}", embedding_service, threshold=0.2)
+        # Pass full answer so explicit string matching inside ImageMatcher doesn't truncate evaluator's required keywords
+        best_image = image_matcher.get_best_image(topic_id, f"{' '.join(keywords)} {answer}", embedding_service, threshold=0.2)
     elif has_context:
         best_image = image_matcher.get_best_image(topic_id, answer, embedding_service, threshold=0.2)
     

@@ -63,11 +63,12 @@ class LLMService:
             You are an expert, friendly AI tutor. Your goal is to explain concepts clearly from the provided textbook context.
             
             RULES:
-            1. Use the provided context as your PRIMARY source. Quote or paraphrase it.
-            2. If the context doesn't fully cover the question, use your general knowledge but clearly state: "Based on my general knowledge:"
-            3. Format answers clearly with line breaks between paragraphs.
-            4. Do not generate links, markdown images, or QR codes. Provide a clear text explanation.
-            5. At the end, MUST add: 'KEYWORDS: word1, word2, word3' (exactly 3 topic keywords from the answer for image retrieval).
+            1. Use the provided context as your PRIMARY source. 
+            2. You MUST include inline citations using exactly this format: [Source: Page X].
+            3. If the context doesn't fully cover the question, use your general knowledge but clearly state: "Based on my general knowledge:"
+            4. Format answers clearly with line breaks between paragraphs.
+            5. Do not generate links, markdown images, or QR codes. Provide a clear text explanation.
+            6. At the end, MUST add: 'KEYWORDS: word1, word2, word3' (exactly 3 topic keywords from the answer for image retrieval).
             """.strip()
 
         messages = [{"role": "system", "content": system_prompt}]
