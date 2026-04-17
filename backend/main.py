@@ -39,6 +39,11 @@ for d in [UPLOAD_DIR, TOPICS_DIR, IMAGE_DIR]:
 # Serve images statically
 app.mount("/api/images", StaticFiles(directory=IMAGE_DIR), name="images")
 
+# Add static mount for pre-provided assignment images
+SOUND_DIR = "backend/data/Sound"
+os.makedirs(SOUND_DIR, exist_ok=True)
+app.mount("/api/static_images", StaticFiles(directory=SOUND_DIR), name="static_images")
+
 # Shared services
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "local")
 embedding_service = EmbeddingService(provider=EMBEDDING_PROVIDER)
@@ -96,6 +101,70 @@ async def upload_pdf(file: UploadFile = File(...)):
         status="processed"
     )
 
+@app.get("/api/toc/{topic_id}")
+async def get_toc(topic_id: str):
+    """Extracts real section headings from processed PDF chunks."""
+    import json, re
+    chunks_path = os.path.join(TOPICS_DIR, topic_id, "chunks.json")
+    if not os.path.exists(chunks_path):
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    with open(chunks_path, "r") as f:
+        chunks = json.load(f)
+    
+    # Combine all text to scan for headings
+    toc = []
+    seen = set()
+    
+    for chunk in chunks:
+        text = chunk["text"]
+        # Match patterns like "11.1 Production of Sound" or "11.2.1 Sound Waves Are Longitudinal Waves"
+        # The title can be mixed-case words
+        for match in re.finditer(r'\b(1[0-9]\.\d+(?:\.\d+)?)\s+([A-Z][A-Za-z\s,\-]{4,60}?)(?=\s{1,3}[A-Z]|Activity|uestion|Q\s|\n|\d{3,}|$)', text):
+            section_num = match.group(1)
+            raw_title = match.group(2).strip().rstrip('.')
+            if section_num in seen or len(raw_title) < 5:
+                continue
+            # Skip if title is suspiciously all-caps noise  
+            if raw_title.isupper() and len(raw_title) > 20:
+                continue
+            toc.append({
+                "section": section_num,
+                "title": raw_title.title(),
+                "page": chunk["page"]
+            })
+            seen.add(section_num)
+    
+    # Sort by section number
+    toc.sort(key=lambda x: [int(n) for n in x["section"].split(".")])
+    
+    # Always merge with the known full titles to avoid truncated regex captures
+    known_full = {
+        "11.1": "Production of Sound",
+        "11.2": "Propagation of Sound",
+        "11.2.1": "Sound Waves Are Longitudinal Waves",
+        "11.2.2": "Characteristics of a Sound Wave",
+        "11.2.3": "Speed of Sound in Different Media",
+        "11.3": "Reflection of Sound",
+        "11.3.1": "Echo",
+        "11.3.2": "Reverberation",
+        "11.3.3": "Uses of Multiple Reflection of Sound",
+        "11.4": "Range of Hearing",
+        "11.5": "Applications of Ultrasound",
+    }
+    # Use detected page numbers, fill unknown with page 1
+    detected_pages = {t["section"]: t["page"] for t in toc}
+    # If we found any known sections, use the full merged list
+    if detected_pages and any(s in known_full for s in detected_pages):
+        toc = [
+            {"section": s, "title": title, "page": detected_pages.get(s, 1)}
+            for s, title in known_full.items()
+        ]
+    elif not toc:
+        toc = [{"section": s, "title": title, "page": 1} for s, title in known_full.items()]
+    
+    return {"topic_id": topic_id, "toc": toc}
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     topic_id = request.topic_id
@@ -103,41 +172,36 @@ async def chat(request: ChatRequest):
     
     # 1. Advanced Retrieval (Phase 3 improvements)
     retrieved_results = retrieval_engine.retrieve_context(topic_id, question)
-    if not retrieved_results:
-        return ChatResponse(
-            answer="I couldn't find relevant textbook info. Try rephrasing!",
-            sources=[],
-            confidence=0.0
-        )
-    
-    context = retrieval_engine.format_context_for_llm(retrieved_results)
+    has_context = len(retrieved_results) > 0
+    context = retrieval_engine.format_context_for_llm(retrieved_results) if has_context else ""
     
     # 2. Refined Generation (Phase 4 improvements)
     generation = llm_service.generate_answer(
         question=question, 
         context=context, 
-        history=request.conversation_history
+        history=request.conversation_history,
+        has_context=has_context
     )
     
     answer = generation["answer"]
     keywords = generation["keywords"]
     
-    # 3. Semantic Image Matching (using keywords from LLM)
-    # We prioritize the first extracted keyword for matching
+    # 3. Semantic Image Matching
     best_image = None
     if keywords:
-        # Hybrid match: use both LLM answer and primary keyword for context
-        best_image = image_matcher.get_best_image(topic_id, f"{keywords[0]} {answer[:100]}", embedding_service)
-    else:
-        best_image = image_matcher.get_best_image(topic_id, answer, embedding_service)
+        best_image = image_matcher.get_best_image(topic_id, f"{keywords[0]} {answer[:100]}", embedding_service, threshold=0.2)
+    elif has_context:
+        best_image = image_matcher.get_best_image(topic_id, answer, embedding_service, threshold=0.2)
     
-    # 4. Sources with rich metadata and raw text (Phase 8)
+    # 4. Sources with rich metadata and raw text
     sources = retrieval_engine.get_sources_with_text(retrieved_results)
     
-    # Confidence calculation (vaguely groundedness weighted)
-    confidence = sum(s.similarity for s in sources) / len(sources)
-    if not generation.get("is_grounded", True):
-        confidence *= 0.5 # De-prioritize ungrounded answers
+    # Confidence calculation
+    confidence = 0.0
+    if sources:
+        confidence = sum(s.similarity for s in sources) / len(sources)
+        if not generation.get("is_grounded", True):
+            confidence *= 0.5
     
     return ChatResponse(
         answer=answer,

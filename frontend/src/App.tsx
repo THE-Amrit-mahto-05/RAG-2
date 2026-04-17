@@ -32,7 +32,8 @@ const App: React.FC = () => {
   const [isChatting, setIsChatting] = useState(false);
   const [, setUploadProgress] = useState<string | null>(null);
   const [activeSources, setActiveSources] = useState<any[]>([]);
-  const [toc, setToc] = useState<{page: number, title: string}[]>([]);
+  const [toc, setToc] = useState<{section: string, page: number, title: string}[]>([]);
+  const [activeTopicIndex, setActiveTopicIndex] = useState<number | null>(null);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -66,15 +67,23 @@ const App: React.FC = () => {
 
     try {
       const response = await axios.post('/api/upload', formData);
-      setTopicId(response.data.id);
+      const newTopicId = response.data.id;
+      setTopicId(newTopicId);
       
-      const pages = [
-        { page: 1, title: 'What is Sound?' },
-        { page: 2, title: 'Production of Sound' },
-        { page: 3, title: 'Propagation of Sound' },
-        { page: 4, title: 'Musical Instruments' }
-      ];
-      setToc(pages);
+      // Fetch real TOC from backend
+      try {
+        const tocResponse = await axios.get(`/api/toc/${newTopicId}`);
+        setToc(tocResponse.data.toc);
+      } catch {
+        // Fallback to generic headings
+        setToc([
+          { section: '11.1', page: 1, title: 'Production of Sound' },
+          { section: '11.2', page: 2, title: 'Propagation of Sound' },
+          { section: '11.3', page: 7, title: 'Reflection of Sound' },
+          { section: '11.4', page: 9, title: 'Range of Hearing' },
+          { section: '11.5', page: 10, title: 'Applications of Ultrasound' },
+        ]);
+      }
 
       setMessages([{
         role: 'assistant',
@@ -84,6 +93,33 @@ const App: React.FC = () => {
       console.error('Upload failed');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleTopicClick = async (topic: {page: number, title: string}, index: number) => {
+    if (!topicId || isChatting) return;
+    setActiveTopicIndex(index);
+    const question = `Explain: ${topic.title}`;
+    const userMessage: Message = { role: 'user', content: question };
+    setMessages(prev => [...prev, userMessage]);
+    setIsChatting(true);
+    try {
+      const response = await axios.post('/api/chat', {
+        topic_id: topicId,
+        question,
+        conversation_history: messages.map(m => ({ role: m.role, content: m.content }))
+      });
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: response.data.answer,
+        image: response.data.image,
+        sources: response.data.sources
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Topic click failed:', error);
+    } finally {
+      setIsChatting(false);
     }
   };
 
@@ -140,9 +176,20 @@ const App: React.FC = () => {
           ) : (
             <div className="space-y-1">
               {toc.map((t, i) => (
-                <div key={i} className="flex items-center py-2 text-sm text-slate-600 hover:text-indigo-600 cursor-pointer border-b border-slate-50">
-                  <span className="mr-2 text-slate-400 font-medium">{t.page}.</span>
-                  <span>{t.title}</span>
+                <div
+                  key={i}
+                  onClick={() => handleTopicClick(t, i)}
+                  className={`flex items-center py-2 text-sm cursor-pointer border-b border-slate-50 transition-colors ${
+                    activeTopicIndex === i
+                      ? 'text-indigo-600 font-semibold bg-indigo-50/50 px-2 rounded'
+                      : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50 px-2 rounded'
+                  } ${isChatting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <span className="mr-2 text-slate-400 font-mono text-xs">{t.section ?? t.page}</span>
+                  <span className="flex-1">{t.title}</span>
+                  {isChatting && activeTopicIndex === i && (
+                    <Loader2 size={12} className="ml-auto animate-spin text-indigo-400" />
+                  )}
                 </div>
               ))}
             </div>

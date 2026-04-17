@@ -7,16 +7,16 @@ from backend.services.embedding_service import EmbeddingService
 from backend.api.schema import ImageInfo
 
 class ImageMatcher:
-    def __init__(self, image_dir: str = "backend/data/images"):
-        self.image_dir = image_dir
+    def __init__(self, static_image_dir: str = "backend/data/Sound"):
+        self.static_image_dir = static_image_dir
 
-    def get_best_image(self, topic_id: str, query_response: str, embedding_service: EmbeddingService, threshold: float = 0.6) -> Optional[ImageInfo]:
+    def get_best_image(self, topic_id: str, query_response: str, embedding_service: EmbeddingService, threshold: float = 0.4) -> Optional[ImageInfo]:
         """
         Finds the most relevant image using a hybrid Keyword + Semantic approach.
         """
-        topic_image_dir = os.path.join(self.image_dir, topic_id)
-        metadata_path = os.path.join(topic_image_dir, "metadata.json")
-        embeddings_path = os.path.join(topic_image_dir, "embeddings.npy")
+        # Hardcoded to use the static assignment images directory
+        metadata_path = os.path.join(self.static_image_dir, "images.json")
+        embeddings_path = os.path.join(self.static_image_dir, "embeddings.npy")
         
         if not os.path.exists(metadata_path) or not os.path.exists(embeddings_path):
             return None

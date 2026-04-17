@@ -42,17 +42,23 @@ class ImageProcessor:
 
                 # HEURISTIC: Look for 'Figure X' or 'Diagram' near the image
                 # In PyMuPDF, images have a 'rect' on the page. We check text blocks near that rect.
-                caption = f"Figure from page {i+1}"
-                img_bbox = page.get_image_bbox(img) # Get image rect
+                caption = None
+                img_bbox = page.get_image_bbox(img)  # Get image rect
                 
-                # Check blocks directly above or below the image rect
+                CAPTION_KEYWORDS = ("Figure", "Fig.", "Diagram", "Activity", "wave", "sound", "vibrat", "compress", "refract", "echo", "ultrasound")
+                
+                # Check blocks directly above or below the image rect (wider 100px)
                 for b in blocks:
                     block_text = b[4].strip()
-                    # If block is nearby and contains 'Figure' or 'Fig'
-                    if (abs(b[1] - img_bbox[3]) < 50 or abs(b[3] - img_bbox[1]) < 50) and \
-                       ("Figure" in block_text or "Fig." in block_text or "Diagram" in block_text):
-                        caption = block_text
+                    if (abs(b[1] - img_bbox[3]) < 100 or abs(b[3] - img_bbox[1]) < 100) and \
+                       any(kw.lower() in block_text.lower() for kw in CAPTION_KEYWORDS):
+                        caption = block_text[:300]  # limit to 300 chars
                         break
+                
+                # Fallback: collect nearby page text as description context
+                if not caption:
+                    nearby_texts = [b[4].strip() for b in blocks if abs(b[1] - img_bbox[3]) < 150 or abs(b[3] - img_bbox[1]) < 150]
+                    caption = " ".join(nearby_texts[:3])[:300] if nearby_texts else f"Textbook diagram on page {i+1} related to sound waves, vibration, compression or propagation"
 
                 extracted_images.append({
                     "id": f"img_{image_count}",

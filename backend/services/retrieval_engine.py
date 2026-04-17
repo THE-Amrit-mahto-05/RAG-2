@@ -23,7 +23,7 @@ class RetrievalEngine:
                 pages.extend([int(m) for m in matches])
         return list(set(pages))
 
-    def retrieve_context(self, topic_id: str, query: str, top_k: int = 5, threshold: float = 0.5) -> List[Dict[str, Any]]:
+    def retrieve_context(self, topic_id: str, query: str, top_k: int = 5, threshold: float = 0.3) -> List[Dict[str, Any]]:
         """Retrieves and re-ranks relevant chunks with metadata filtering and diversity."""
         # 1. Detect page filters
         target_pages = self._extract_page_number(query)
@@ -79,8 +79,9 @@ class RetrievalEngine:
             if page_counts[page] <= 2: # Max 2 chunks per page in top results
                 diverse_results.append(res)
             
-            if len(diverse_results) >= top_k:
-                break
+        # If nothing passed threshold, fall back to the top results anyway
+        if not diverse_results and ranked_results:
+            diverse_results = sorted(ranked_results, key=lambda x: x["similarity"], reverse=True)[:3]
                 
         return diverse_results
 

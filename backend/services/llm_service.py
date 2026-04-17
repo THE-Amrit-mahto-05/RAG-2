@@ -47,18 +47,28 @@ class LLMService:
             self.base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/api/chat")
             print(f"Initialized Ollama: {self.model}")
 
-    def generate_answer(self, question: str, context: str, history: List[Dict] = []) -> Dict[str, Any]:
+    def generate_answer(self, question: str, context: str, history: List[Dict] = [], has_context: bool = True) -> Dict[str, Any]:
         """Generates a contextualized response with a groundedness check."""
-        system_prompt = """
-        You are an expert, friendly AI tutor. Your goal is to explain concepts clearly from the provided textbook context.
         
-        RULES:
-        1. Use ONLY the provided context to answer. 
-        2. If the info isn't in context, say: "Based on this chapter, I don't have enough information to answer that accurately."
-        3. Format: [Chunk X - Page Y]: {text}
-        4. Citations are MANDATORY for every factual claim.
-        5. At the end, MUST add: 'KEYWORDS: word1, word2, word3'
-        """.strip()
+        if not has_context:
+            # Conversational / no-context mode
+            system_prompt = """You are a friendly AI tutor for a textbook chapter on Sound. 
+            The student is chatting with you but no specific chapter context was retrieved. 
+            Respond warmly and helpfully. For greetings, introduce yourself. 
+            For unclear questions, ask the student to be more specific about what they want to learn from the chapter.
+            IMPORTANT: Do not generate links, markdown images, or QR codes.
+            """.strip()
+        else:
+            system_prompt = """
+            You are an expert, friendly AI tutor. Your goal is to explain concepts clearly from the provided textbook context.
+            
+            RULES:
+            1. Use the provided context as your PRIMARY source. Quote or paraphrase it.
+            2. If the context doesn't fully cover the question, use your general knowledge but clearly state: "Based on my general knowledge:"
+            3. Format answers clearly with line breaks between paragraphs.
+            4. Do not generate links, markdown images, or QR codes. Provide a clear text explanation.
+            5. At the end, MUST add: 'KEYWORDS: word1, word2, word3' (exactly 3 topic keywords from the answer for image retrieval).
+            """.strip()
 
         messages = [{"role": "system", "content": system_prompt}]
         for msg in history[-10:]:
