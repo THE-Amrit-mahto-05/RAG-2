@@ -13,8 +13,8 @@ interface Message {
   };
   sources?: {
     chunk_id: string;
-    page: int;
-    similarity: float;
+    page: number;
+    similarity: number;
     match_metadata?: any;
   }[];
 }
