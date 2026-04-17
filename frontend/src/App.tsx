@@ -194,7 +194,7 @@ const App: React.FC = () => {
                   } ${isChatting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <span className="mr-2 text-slate-400 font-mono text-xs">{t.section ?? t.page}</span>
-                  <span className="flex-1">{t.title}</span>
+                  <span className="flex-1 leading-tight py-1">{t.title}</span>
                   {isChatting && activeTopicIndex === i && (
                     <Loader2 size={12} className="ml-auto animate-spin text-indigo-400" />
                   )}
@@ -218,11 +218,11 @@ const App: React.FC = () => {
               <div className="space-y-2">
                 <h2 className="text-xl font-bold text-slate-700">Upload Chapter PDF</h2>
                 <p className="text-sm text-slate-500">
-                  Sound chapter content, topics and visuals will appear after upload.
+                  Chapter content, topics and visuals will appear after upload.
                 </p>
               </div>
               <label className="btn-primary cursor-pointer inline-block">
-                {isUploading ? <Loader2 className="animate-spin" /> : 'Upload Sound Chapter'}
+                {isUploading ? <Loader2 className="animate-spin" /> : 'Upload Chapter PDF'}
                 <input type="file" className="hidden" accept=".pdf" onChange={handleUpload} disabled={isUploading} />
               </label>
             </div>

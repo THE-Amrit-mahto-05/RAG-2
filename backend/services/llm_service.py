@@ -133,6 +133,60 @@ class LLMService:
                 
             return {"answer": friendly_message, "keywords": []}
 
+    def extract_toc(self, text: str) -> List[Dict[str, Any]]:
+        """Extracts a structured Table of Contents from raw text using the LLM."""
+        system_prompt = """
+        You are a Document Structure Expert. Your task is to extract a logical Table of Contents (TOC) from the provided textbook text.
+        
+        RULES:
+        1. Identify the 5-8 most important chapter headings or topic titles.
+        2. Assign a logical section number if none exists (e.g., 1, 2, 3 or A, B, C).
+        3. Return the result STRICTLY as a JSON list of objects with "section", "title", and "page" fields.
+        4. If you cannot find a page number, estimate it based on the text flow or use 1.
+        
+        Example Output:
+        [
+            {"section": "1", "title": "Introduction to Biology", "page": 1},
+            {"section": "2", "title": "Cell Structure", "page": 4}
+        ]
+        """
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Extract TOC from this text:\n\n{text[:8000]}"} # Send first 8k chars
+        ]
+
+        try:
+            if self.provider == "groq" or self.provider == "openai":
+                completion = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.1,
+                    response_format={ "type": "json_object" } if self.provider == "openai" else None
+                )
+                raw_content = completion.choices[0].message.content
+            
+            elif self.provider == "ollama":
+                resp = requests.post(self.base_url, json={
+                    "model": self.model,
+                    "messages": messages,
+                    "stream": False,
+                    "format": "json"
+                })
+                raw_content = resp.json()["message"]["content"]
+
+            # Parse JSON from response
+            # Sometimes LLMs wrap JSON in code blocks
+            json_match = re.search(r'\[.*\]', raw_content, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group(0))
+            
+            return json.loads(raw_content)
+
+        except Exception as e:
+            print(f"Error extracting TOC: {e}")
+            return []
+
     def _check_groundedness(self, answer: str, context: str) -> bool:
         """Simple check to see if key factual terms in answer exist in context."""
         # This is a basic version; for production, one might use an LLM-based grader.

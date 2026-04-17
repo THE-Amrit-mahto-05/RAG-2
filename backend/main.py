@@ -116,43 +116,46 @@ async def get_toc(topic_id: str):
     toc = []
     seen = set()
     
+    # --- STAGE 1: Decimal Pattern Discovery (e.g. 1.1, 11.2) ---
     for chunk in chunks:
         text = chunk["text"]
-        # Match patterns like "1.1 Introduction" or "11.2.1 Sound Waves Are Longitudinal Waves"
-        # The title can be mixed-case words
-        for match in re.finditer(r'\b(\d+\.\d+(?:\.\d+)?)\s+([A-Z][A-Za-z\s,\-]{3,60}?)(?=\s{1,3}[A-Z]|Activity|Question|Q\s|\n|\d{3,}|$)', text):
+        for match in re.finditer(r'\b(\d+\.\d+(?:\.\d+)?)\s+([A-Z][A-Za-z\s,\-]{4,60}?)(?=\s{1,3}[A-Z]|Activity|Question|Q\s|\n|\d{3,}|$)', text):
             section_num = match.group(1)
             raw_title = match.group(2).strip().rstrip('.')
-            if section_num in seen or len(raw_title) < 4:
-                continue
-            # Skip if title is suspiciously all-caps noise  
-            if raw_title.isupper() and len(raw_title) > 20:
-                continue
-            toc.append({
-                "section": section_num,
-                "title": raw_title.title(),
-                "page": chunk["page"]
-            })
+            if section_num in seen or len(raw_title) < 4: continue
+            toc.append({"section": section_num, "title": raw_title.title(), "page": chunk["page"]})
             seen.add(section_num)
     
     # Sort by section number correctly (handling arbitrary lengths)
-    try:
-        toc.sort(key=lambda x: [int(n) for n in x["section"].split(".")])
-    except Exception:
-        pass
-    
-    # In case TOC extraction failed to find anything using strictly numbered patterns,
-    # generate a generic page-based TOC framework
-    if not toc:
-        for chunk in chunks[:10]:
-            if chunk["page"] not in [t.get("page") for t in toc]:
+    # --- STAGE 2: Formatting-Based Discovery (Headers with colons or ALL-CAPS) ---
+    if len(toc) < 3:
+        for chunk in chunks:
+            text = chunk["text"]
+            for match in re.finditer(r'(?:^|\n)\s*([A-Z][A-Za-z\s]{5,40}:|[A-Z]{5,40}(?:\s+[A-Z]{2,})*)\s*(?:\n|$)', text):
+                raw_title = match.group(1).strip().rstrip(':')
+                if raw_title.lower() in [t["title"].lower() for t in toc] or len(raw_title) < 5:
+                    continue
                 toc.append({
-                    "section": f"Page {chunk['page']}",
-                    "title": f"Section on Page {chunk['page']}",
+                    "section": str(len(toc) + 1),
+                    "title": raw_title.title() if not raw_title.isupper() else raw_title,
                     "page": chunk["page"]
                 })
-        # Keep it concise
-        toc = toc[:5]
+                if len(toc) >= 10: break
+            if len(toc) >= 10: break
+
+    # --- STAGE 3: LLM Semantic Discovery (The "Smart" Fallback) ---
+    if len(toc) < 3:
+        print("DEBUG: TOC sparse. Triggering LLM-assisted Discovery...")
+        combined_text = "\n".join([c["text"] for c in chunks[:5]])
+        llm_toc = llm_service.extract_toc(combined_text)
+        if llm_toc:
+            toc = llm_toc
+
+    # Sort and return
+    try:
+        toc.sort(key=lambda x: [int(n) if str(n).isdigit() else 0 for n in str(x.get("section", "0")).split(".")])
+    except Exception:
+        pass
     
 
     
