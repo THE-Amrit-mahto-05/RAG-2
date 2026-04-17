@@ -467,3 +467,65 @@ LLM Error: error code: 429 - {'error': {'message': 'rate limit reached for model
 INFO:     127.0.0.1:51372 - "POST /api/chat HTTP/1.1" 200 OK
 LLM Error: error code: 429 - {'error': {'message': 'rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01k9xszapzft58vh6mvk5p4png` service tier `on_demand` on tokens per day (tpd): limit 100000, used 99467, requested 4060. please try again in 50m47.328s. need more tokens? upgrade to dev tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
 INFO:     127.0.0.1:51376 - "POST /api/chat HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'backend/core/processor.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [79728]
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/amritkumarmahto/Edulevel/backend/services/embedding_service.py:14: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [86114]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'backend/core/processor.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [86114]
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/amritkumarmahto/Edulevel/backend/services/embedding_service.py:14: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [86656]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+Loading local embedding model: all-MiniLM-L6-v2...
+Initialized Groq: llama-3.3-70b-versatile
+Generated embeddings for 33 images in topic 252a695b-a1b3-4ae8-8a90-685c21ba3c73
+INFO:     127.0.0.1:51481 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51484 - "GET /api/toc/252a695b-a1b3-4ae8-8a90-685c21ba3c73 HTTP/1.1" 200 OK
+Generated embeddings for 33 images in topic b26f691a-a9ff-4f5e-ae6b-44cec0ecec95
+INFO:     127.0.0.1:51525 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51528 - "GET /api/toc/b26f691a-a9ff-4f5e-ae6b-44cec0ecec95 HTTP/1.1" 200 OK
+LLM Error: error code: 429 - {'error': {'message': 'rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01k9xszapzft58vh6mvk5p4png` service tier `on_demand` on tokens per day (tpd): limit 100000, used 99058, requested 2835. please try again in 27m15.552s. need more tokens? upgrade to dev tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+INFO:     127.0.0.1:51538 - "POST /api/chat HTTP/1.1" 200 OK
+LLM Error: error code: 429 - {'error': {'message': 'rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01k9xszapzft58vh6mvk5p4png` service tier `on_demand` on tokens per day (tpd): limit 100000, used 99033, requested 3961. please try again in 43m6.816s. need more tokens? upgrade to dev tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+INFO:     127.0.0.1:51545 - "POST /api/chat HTTP/1.1" 200 OK

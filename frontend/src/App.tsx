@@ -300,7 +300,7 @@ const App: React.FC = () => {
               {activeSources.map((s, i) => (
                 <div key={i} className="space-y-3 pb-6 border-b border-slate-100 last:border-0">
                   <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">Page {s.page}</p>
-                  <div className="bg-slate-50 border-l-4 border-indigo-400 p-4 text-sm text-slate-600 leading-relaxed shadow-sm rounded-r-md">
+                  <div className="bg-slate-50 border-l-4 border-indigo-400 p-4 text-sm text-slate-600 leading-relaxed shadow-sm rounded-r-md whitespace-pre-wrap">
                     {s.text}
                   </div>
                 </div>

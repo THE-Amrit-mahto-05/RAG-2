@@ -15,8 +15,10 @@ class PDFProcessor:
         for page_num in range(len(doc)):
             page = doc.load_page(page_num)
             text = page.get_text("text")
-            # Clean up text (remove excessive whitespace, etc.)
-            text = re.sub(r'\s+', ' ', text).strip()
+            # Clean up text (remove excessive horizontal whitespace but preserve newlines)
+            text = re.sub(r'[ \t]+', ' ', text).strip()
+            # Normalize multiple newlines to double newlines for paragraph spacing
+            text = re.sub(r'\n{3,}', '\n\n', text)
             if text:
                 pages_content.append({
                     "page": page_num + 1,
@@ -34,14 +36,22 @@ class PDFProcessor:
             text = page["text"]
             page_num = page["page"]
             
-            # Simple semantic splitting by sentences/paragraphs
-            # Here we split by sentences to avoid breaking mid-sentence
-            sentences = re.split(r'(?<=[.!?]) +', text)
+            # Simple semantic splitting by sentences/paragraphs, preserving newlines
+            sentences = re.split(r'(?<=[.!?])[\t ]+(?=[A-Z])', text)
             
             current_chunk_text = ""
             for sentence in sentences:
-                if len(current_chunk_text) + len(sentence) <= self.chunk_size:
-                    current_chunk_text += sentence + " "
+                sentence = sentence.strip()
+                if not sentence: continue
+                
+                # Check if we should add a newline or space
+                separator = "\n" if "\n" in sentence or current_chunk_text.endswith(('\n', ':')) else " "
+                
+                if len(current_chunk_text) + len(sentence) + len(separator) <= self.chunk_size:
+                    if not current_chunk_text:
+                        current_chunk_text = sentence
+                    else:
+                        current_chunk_text += separator + sentence
                 else:
                     # Save current chunk
                     if current_chunk_text.strip():
