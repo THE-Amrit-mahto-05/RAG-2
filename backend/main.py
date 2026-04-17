@@ -4,17 +4,23 @@ import json
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from backend.api.schema import ChatRequest, ChatResponse, TopicMetadata, Source, ImageInfo
+from dotenv import load_dotenv
+
+from backend.api.schema import ChatRequest, ChatResponse, TopicMetadata, Source
 from backend.core.processor import PDFProcessor
 from backend.core.image_processor import ImageProcessor
 from backend.services.embedding_service import EmbeddingService
 from backend.services.vector_store import VectorStore
 from backend.services.retrieval_engine import RetrievalEngine
 from backend.services.image_matcher import ImageMatcher
+from backend.services.llm_service import LLMService
+
+# Load environment variables (API keys, etc.)
+load_dotenv()
 
 app = FastAPI(title="Edulevel RAG AI Tutor API")
 
-# Enable CORS for frontend integration
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,25 +31,33 @@ app.add_middleware(
 
 # Initialize directories
 UPLOAD_DIR = "backend/data/uploads"
+TOPICS_DIR = "backend/data/topics"
 IMAGE_DIR = "backend/data/images"
-PROCESSED_DIR = "backend/data/processed"
-for d in [UPLOAD_DIR, IMAGE_DIR, PROCESSED_DIR]:
+for d in [UPLOAD_DIR, TOPICS_DIR, IMAGE_DIR]:
     os.makedirs(d, exist_ok=True)
 
 # Serve images statically
 app.mount("/api/images", StaticFiles(directory=IMAGE_DIR), name="images")
 
-# Global instances (Loaded lazily or initialized here for simplicity)
-embedding_service = EmbeddingService()
-vector_store = VectorStore(dimension=embedding_service.dimension)
+# Initialize shared services
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "local")
+embedding_service = EmbeddingService(provider=EMBEDDING_PROVIDER)
+
+vector_store = VectorStore(dimension=embedding_service.dimension, base_path=TOPICS_DIR)
 retrieval_engine = RetrievalEngine(embedding_service, vector_store)
 image_matcher = ImageMatcher(IMAGE_DIR)
 pdf_processor = PDFProcessor()
 image_processor = ImageProcessor(IMAGE_DIR)
 
+# PHASE 4: Initialize LLM Service with Groq
+llm_service = LLMService(
+    api_key=os.getenv("GROQ_API_KEY"),
+    model=os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
+)
+
 @app.get("/")
 async def root():
-    return {"message": "Edulevel AI Tutor API is running"}
+    return {"message": f"Edulevel AI Tutor API is running with {EMBEDDING_PROVIDER} embeddings and Groq LLM"}
 
 @app.post("/api/upload", response_model=TopicMetadata)
 async def upload_pdf(file: UploadFile = File(...)):
@@ -53,17 +67,22 @@ async def upload_pdf(file: UploadFile = File(...)):
     topic_id = str(uuid.uuid4())
     file_path = os.path.join(UPLOAD_DIR, f"{topic_id}.pdf")
     
-    # Save the PDF
     with open(file_path, "wb") as f:
         f.write(await file.read())
     
-    # Process PDF: Extract text and chunk
+    # Process PDF
     chunks = pdf_processor.process_pdf(file_path)
     
     # Generate embeddings and update vector store
     chunk_texts = [c.text for c in chunks]
     embeddings = embedding_service.get_embeddings(chunk_texts)
-    vector_store.create_index(topic_id, embeddings, chunks)
+    
+    vector_store.create_index(
+        topic_id, 
+        embeddings, 
+        chunks, 
+        metadata={"provider": EMBEDDING_PROVIDER, "model": embedding_service.model_name or "default"}
+    )
     
     # Extract images and generate image embeddings
     images = image_processor.extract_images(file_path, topic_id)
@@ -85,29 +104,23 @@ async def chat(request: ChatRequest):
     retrieved_results = retrieval_engine.retrieve_context(topic_id, question)
     if not retrieved_results:
         return ChatResponse(
-            answer="I couldn't find any relevant information in the document for that question.",
+            answer="I couldn't find any relevant sections in the textbook for your question.",
             sources=[],
             confidence=0.0
         )
     
     context = retrieval_engine.format_context_for_llm(retrieved_results)
     
-    # 2. Generate LLM Answer (Mocking if no API key provided)
-    # In a real scenario, we'd use Groq/OpenAI here.
-    api_key = os.getenv("GROQ_API_KEY")
+    # 2. Generate Real Answer via Groq
+    answer = llm_service.generate_answer(
+        question=question, 
+        context=context, 
+        history=request.conversation_history
+    )
     
-    if api_key:
-        # Placeholder for real Groq call
-        answer = f"[REAL LLM RESPONSE] Based on the context provided (Page {retrieved_results[0]['chunk'].page}), the document discussing {question} suggests..."
-    else:
-        # Mock Response for now
-        main_chunk = retrieved_results[0]["chunk"]
-        answer = f"According to the text on page {main_chunk.page}: '{main_chunk.text[:200]}...'"
-    
-    # 3. Match relevant image
+    # 3. Match relevant image using semantic matching
     best_image = image_matcher.get_best_image(topic_id, answer, embedding_service)
     
-    # 4. Format sources
     sources = [
         Source(chunk_id=res["chunk"].id, page=res["chunk"].page, similarity=res["similarity"])
         for res in retrieved_results

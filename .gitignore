@@ -9,7 +9,7 @@ env/
 pip-log.txt
 pip-delete-this-directory.txt
 .venv
-.env
+.env*
 .ipynb_checkpoints
 
 # Node.js
@@ -41,3 +41,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.project
+.pydevproject
+.settings/
