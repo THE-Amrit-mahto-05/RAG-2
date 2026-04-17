@@ -1,69 +1,83 @@
-import fitz
 import os
-import uuid
 import json
+import fitz # PyMuPDF
+import numpy as np
 from typing import List, Dict, Any
 from backend.services.embedding_service import EmbeddingService
 
 class ImageProcessor:
-    def __init__(self, image_output_dir: str = "backend/data/images"):
-        self.image_output_dir = image_output_dir
-        os.makedirs(image_output_dir, exist_ok=True)
+    def __init__(self, base_image_dir: str = "backend/data/images"):
+        self.base_image_dir = base_image_dir
+        os.makedirs(base_image_dir, exist_ok=True)
 
     def extract_images(self, pdf_path: str, topic_id: str) -> List[Dict[str, Any]]:
-        """Extracts images from the PDF and saves them with metadata."""
+        """Extracts significant images from PDF and attempts to find matching captions."""
         doc = fitz.open(pdf_path)
-        topic_image_dir = os.path.join(self.image_output_dir, topic_id)
-        os.makedirs(topic_image_dir, exist_ok=True)
+        topic_dir = os.path.join(self.base_image_dir, topic_id)
+        os.makedirs(topic_dir, exist_ok=True)
         
         extracted_images = []
-        
-        for page_num in range(len(doc)):
-            page = doc.load_page(page_num)
-            image_list = page.get_images(full=True)
+        image_count = 0
+
+        for i in range(len(doc)):
+            page = doc[i]
+            # Try to get text blocks near images for caption matching
+            blocks = page.get_text("blocks")
             
-            for img_index, img in enumerate(image_list):
+            for img in page.get_images(full=True):
                 xref = img[0]
                 base_image = doc.extract_image(xref)
                 image_bytes = base_image["image"]
-                image_ext = base_image["ext"]
                 
-                image_id = str(uuid.uuid4())
-                image_filename = f"{image_id}.{image_ext}"
-                image_path = os.path.join(topic_image_dir, image_filename)
+                # Filter by resolution (Ignore tiny icons/bullets)
+                if base_image["width"] < 150 or base_image["height"] < 150:
+                    continue
+
+                image_ext = base_image["ext"]
+                image_filename = f"image_{image_count}.{image_ext}"
+                image_path = os.path.join(topic_dir, image_filename)
                 
                 with open(image_path, "wb") as f:
                     f.write(image_bytes)
+
+                # HEURISTIC: Look for 'Figure X' or 'Diagram' near the image
+                # In PyMuPDF, images have a 'rect' on the page. We check text blocks near that rect.
+                caption = f"Figure from page {i+1}"
+                img_bbox = page.get_image_bbox(img) # Get image rect
                 
-                # In a real scenario, we might use a captioning model here.
-                # For this assignment, we use the surrounding text or simple labels.
+                # Check blocks directly above or below the image rect
+                for b in blocks:
+                    block_text = b[4].strip()
+                    # If block is nearby and contains 'Figure' or 'Fig'
+                    if (abs(b[1] - img_bbox[3]) < 50 or abs(b[3] - img_bbox[1]) < 50) and \
+                       ("Figure" in block_text or "Fig." in block_text or "Diagram" in block_text):
+                        caption = block_text
+                        break
+
                 extracted_images.append({
-                    "id": image_id,
-                    "filename": image_filename,
+                    "id": f"img_{image_count}",
+                    "path": image_path,
                     "url": f"/api/images/{topic_id}/{image_filename}",
-                    "page": page_num + 1,
-                    "title": f"Figure from page {page_num + 1}",
-                    "description": f"Image extracted from page {page_num + 1} of the textbook."
+                    "page": i + 1,
+                    "title": f"Textbook Figure - Page {i+1}",
+                    "description": caption
                 })
-        
-        doc.close()
-        
-        # Save metadata to disk
-        metadata_path = os.path.join(topic_image_dir, "metadata.json")
-        with open(metadata_path, "w") as f:
-            json.dump(extracted_images, f)
-            
+                image_count += 1
+
         return extracted_images
 
     def generate_image_embeddings(self, topic_id: str, extracted_images: List[Dict[str, Any]], embedding_service: EmbeddingService):
-        """Generates embeddings for images based on their description/title."""
-        topic_image_dir = os.path.join(self.image_output_dir, topic_id)
+        """Generates embeddings for image descriptions for semantic search."""
+        if not extracted_images: return
+
+        topic_dir = os.path.join(self.base_image_dir, topic_id)
+        descriptions = [img["description"] for img in extracted_images]
         
-        # We use a combined string of title and description for semantic matching
-        texts_to_embed = [f"{img['title']} {img['description']}" for img in extracted_images]
+        embeddings = embedding_service.get_embeddings(descriptions)
         
-        if not texts_to_embed:
-            return
+        # Save embeddings and original metadata
+        np.save(os.path.join(topic_dir, "embeddings.npy"), embeddings)
+        with open(os.path.join(topic_dir, "metadata.json"), "w") as f:
+            json.dump(extracted_images, f)
             
-        embeddings = embedding_service.get_embeddings(texts_to_embed)
-        np.save(os.path.join(topic_image_dir, "embeddings.npy"), embeddings)
+        print(f"Generated embeddings for {len(extracted_images)} images in topic {topic_id}")
