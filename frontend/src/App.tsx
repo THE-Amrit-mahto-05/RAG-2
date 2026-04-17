@@ -21,11 +21,8 @@ interface Message {
 }
 
 const App: React.FC = () => {
-  const [topicId, setTopicId] = useState<string | null>(() => localStorage.getItem('edulevel_topic_id'));
-  const [messages, setMessages] = useState<Message[]>(() => {
-    const saved = localStorage.getItem('edulevel_messages');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [topicId, setTopicId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   
   const [input, setInput] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -38,12 +35,6 @@ const App: React.FC = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (topicId) localStorage.setItem('edulevel_topic_id', topicId);
-    else localStorage.removeItem('edulevel_topic_id');
-  }, [topicId]);
-
-  useEffect(() => {
-    localStorage.setItem('edulevel_messages', JSON.stringify(messages));
     scrollToBottom();
     const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
     if (lastAssistantMsg && lastAssistantMsg.sources) {
@@ -116,8 +107,14 @@ const App: React.FC = () => {
         sources: response.data.sources
       };
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Topic click failed:', error);
+      if (error.response?.status === 400) {
+        setTopicId(null);
+        setMessages([]);
+        setToc([]);
+        alert("Session expired or PDF memory cleared. Please re-upload.");
+      }
     } finally {
       setIsChatting(false);
     }
@@ -145,8 +142,14 @@ const App: React.FC = () => {
         sources: response.data.sources
       };
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Chat failed:', error);
+      if (error.response?.status === 400) {
+        setTopicId(null);
+        setMessages([]);
+        setToc([]);
+        alert("Session expired or PDF memory cleared. Please re-upload.");
+      }
     } finally {
       setIsChatting(false);
     }

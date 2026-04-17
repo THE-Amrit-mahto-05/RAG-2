@@ -170,6 +170,11 @@ async def chat(request: ChatRequest):
     topic_id = request.topic_id
     question = request.question
     
+    # Validation: Ensure topic actually exists in memory/disk
+    topic_path = os.path.join(TOPICS_DIR, topic_id)
+    if not os.path.exists(topic_path):
+        raise HTTPException(status_code=400, detail="Topic index not found. Please upload the file again.")
+    
     # 1. Advanced Retrieval (Phase 3 improvements)
     retrieved_results = retrieval_engine.retrieve_context(topic_id, question)
     has_context = len(retrieved_results) > 0
