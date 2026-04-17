@@ -247,7 +247,7 @@ const App: React.FC = () => {
                       {msg.role === 'user' ? 'Student (You):' : 'AI Tutor'}
                     </p>
                     <div className="text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">
-                      {msg.content}
+                      {msg.content.replace(/!\[.*?\]\(.*?\)/g, '').replace(/<img[^>]*>/g, '')}
                     </div>
                     {msg.image && (
                       <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-2 shadow-sm inline-block">

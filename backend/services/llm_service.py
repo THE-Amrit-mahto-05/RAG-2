@@ -51,7 +51,7 @@ class LLMService:
         """Generates a contextualized response with a groundedness check."""
         
         if not has_context:
-            system_prompt = """You are a friendly AI tutor for a textbook chapter on Sound. 
+            system_prompt = """You are a friendly AI tutor for an educational textbook chapter. 
             The student is chatting with you but no specific chapter context was retrieved. 
             Respond briefly, stating that you can only answer questions related to the loaded textbook chapter. Do not provide outside knowledge.
             IMPORTANT: Do not generate links, markdown images, or QR codes.

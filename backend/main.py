@@ -118,12 +118,12 @@ async def get_toc(topic_id: str):
     
     for chunk in chunks:
         text = chunk["text"]
-        # Match patterns like "11.1 Production of Sound" or "11.2.1 Sound Waves Are Longitudinal Waves"
+        # Match patterns like "1.1 Introduction" or "11.2.1 Sound Waves Are Longitudinal Waves"
         # The title can be mixed-case words
-        for match in re.finditer(r'\b(1[0-9]\.\d+(?:\.\d+)?)\s+([A-Z][A-Za-z\s,\-]{4,60}?)(?=\s{1,3}[A-Z]|Activity|uestion|Q\s|\n|\d{3,}|$)', text):
+        for match in re.finditer(r'\b(\d+\.\d+(?:\.\d+)?)\s+([A-Z][A-Za-z\s,\-]{3,60}?)(?=\s{1,3}[A-Z]|Activity|Question|Q\s|\n|\d{3,}|$)', text):
             section_num = match.group(1)
             raw_title = match.group(2).strip().rstrip('.')
-            if section_num in seen or len(raw_title) < 5:
+            if section_num in seen or len(raw_title) < 4:
                 continue
             # Skip if title is suspiciously all-caps noise  
             if raw_title.isupper() and len(raw_title) > 20:
@@ -135,33 +135,26 @@ async def get_toc(topic_id: str):
             })
             seen.add(section_num)
     
-    # Sort by section number
-    toc.sort(key=lambda x: [int(n) for n in x["section"].split(".")])
+    # Sort by section number correctly (handling arbitrary lengths)
+    try:
+        toc.sort(key=lambda x: [int(n) for n in x["section"].split(".")])
+    except Exception:
+        pass
     
-    # Always merge with the known full titles to avoid truncated regex captures
-    known_full = {
-        "11.1": "Production of Sound",
-        "11.2": "Propagation of Sound",
-        "11.2.1": "Sound Waves Are Longitudinal Waves",
-        "11.2.2": "Characteristics of a Sound Wave",
-        "11.2.3": "Speed of Sound in Different Media",
-        "11.3": "Reflection of Sound",
-        "11.3.1": "Echo",
-        "11.3.2": "Reverberation",
-        "11.3.3": "Uses of Multiple Reflection of Sound",
-        "11.4": "Range of Hearing",
-        "11.5": "Applications of Ultrasound",
-    }
-    # Use detected page numbers, fill unknown with page 1
-    detected_pages = {t["section"]: t["page"] for t in toc}
-    # If we found any known sections, use the full merged list
-    if detected_pages and any(s in known_full for s in detected_pages):
-        toc = [
-            {"section": s, "title": title, "page": detected_pages.get(s, 1)}
-            for s, title in known_full.items()
-        ]
-    elif not toc:
-        toc = [{"section": s, "title": title, "page": 1} for s, title in known_full.items()]
+    # In case TOC extraction failed to find anything using strictly numbered patterns,
+    # generate a generic page-based TOC framework
+    if not toc:
+        for chunk in chunks[:10]:
+            if chunk["page"] not in [t.get("page") for t in toc]:
+                toc.append({
+                    "section": f"Page {chunk['page']}",
+                    "title": f"Section on Page {chunk['page']}",
+                    "page": chunk["page"]
+                })
+        # Keep it concise
+        toc = toc[:5]
+    
+
     
     return {"topic_id": topic_id, "toc": toc}
 
@@ -191,23 +184,14 @@ async def chat(request: ChatRequest):
     answer = generation["answer"]
     keywords = generation["keywords"]
     
-    # 3. Explicit Evaluation Requirements for Image Retrieval
-    best_image = None
-    lower_ans = answer.lower()
-    
-    # "If the answer mentions 'vibration' or 'longitudinal', return the corresponding image URL."
-    if "longitudinal" in lower_ans or "compression" in lower_ans:
-        best_image = {"url": "/api/static_images/CompressionAndRefraction.png", "title": "Compression and Rarefaction", "description": "Longitudinal sound wave."}
-    elif "reflection" in lower_ans:
-        best_image = {"url": "/api/static_images/ReflectionOfSound.png", "title": "Reflection of Sound", "description": "Sound reflecting."}
-    elif "rubber" in lower_ans:
-        best_image = {"url": "/api/static_images/VibrationOfRubberBand.png", "title": "Vibration of a Rubber Band", "description": "Rubber band vibrating."}
-    elif "bell" in lower_ans or "vibration" in lower_ans:
-        best_image = {"url": "/api/static_images/SchoolBellVibration.png", "title": "School Bell Vibration", "description": "Bell producing sound."}
-    elif "instrument" in lower_ans:
-        best_image = {"url": "/api/static_images/MusicalInstrumentsVibrationChart.png", "title": "Musical Instruments", "description": "Instruments vibrating."}
-    elif "vocal" in lower_ans:
-        best_image = {"url": "/api/static_images/VocalCordsDiagram.png", "title": "Vocal Cords", "description": "Human vocal cords."}
+    # 3. Dynamic Image Matching (No hardcoded subject links)
+    best_image_info = None
+    if keywords:
+        best_image_info = image_matcher.get_best_image(topic_id, f"{' '.join(keywords)} {answer}", embedding_service, threshold=0.2)
+    elif has_context:
+        best_image_info = image_matcher.get_best_image(topic_id, answer, embedding_service, threshold=0.2)
+        
+    best_image = best_image_info.dict() if best_image_info else None
     
     # 4. Sources with rich metadata and raw text
     sources = retrieval_engine.get_sources_with_text(retrieved_results)
