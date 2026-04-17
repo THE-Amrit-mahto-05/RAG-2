@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 class TopicMetadata(BaseModel):
     id: str
@@ -27,6 +27,7 @@ class Source(BaseModel):
     chunk_id: str
     page: int
     similarity: float
+    match_metadata: Optional[Dict[str, Any]] = None # New for Phase 3
 
 class ChatResponse(BaseModel):
     answer: str

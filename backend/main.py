@@ -100,7 +100,7 @@ async def chat(request: ChatRequest):
     topic_id = request.topic_id
     question = request.question
     
-    # 1. Retrieve Context
+    # 1. Smarter Retrieval (Advanced RAG - Phase 3)
     retrieved_results = retrieval_engine.retrieve_context(topic_id, question)
     if not retrieved_results:
         return ChatResponse(
@@ -121,8 +121,14 @@ async def chat(request: ChatRequest):
     # 3. Match relevant image using semantic matching
     best_image = image_matcher.get_best_image(topic_id, answer, embedding_service)
     
+    # 4. Standard Format for Sources with match metadata (Phase 3 Integration)
     sources = [
-        Source(chunk_id=res["chunk"].id, page=res["chunk"].page, similarity=res["similarity"])
+        Source(
+            chunk_id=res["chunk"].id, 
+            page=res["chunk"].page, 
+            similarity=res["similarity"],
+            match_metadata=res.get("meta")
+        )
         for res in retrieved_results
     ]
     
