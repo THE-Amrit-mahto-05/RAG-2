@@ -92,3 +92,16 @@ class RetrievalEngine:
             context_parts.append(f"[Source {i+1} - Page {chunk.page}]: {chunk.text}")
         
         return "\n---\n".join(context_parts)
+
+    def get_sources_with_text(self, retrieved_results: List[Dict[str, Any]]) -> List[Source]:
+        """Converts internal results into API Source objects with full text."""
+        return [
+            Source(
+                chunk_id=res["chunk"].id,
+                page=res["chunk"].page,
+                similarity=float(res["similarity"]),
+                text=res["chunk"].text,
+                match_metadata=res.get("meta")
+            )
+            for res in retrieved_results
+        ]

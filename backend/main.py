@@ -131,16 +131,8 @@ async def chat(request: ChatRequest):
     else:
         best_image = image_matcher.get_best_image(topic_id, answer, embedding_service)
     
-    # 4. Sources with rich metadata
-    sources = [
-        Source(
-            chunk_id=res["chunk"].id, 
-            page=res["chunk"].page, 
-            similarity=res["similarity"],
-            match_metadata=res.get("meta")
-        )
-        for res in retrieved_results
-    ]
+    # 4. Sources with rich metadata and raw text (Phase 8)
+    sources = retrieval_engine.get_sources_with_text(retrieved_results)
     
     # Confidence calculation (vaguely groundedness weighted)
     confidence = sum(s.similarity for s in sources) / len(sources)

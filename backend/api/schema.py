@@ -27,7 +27,8 @@ class Source(BaseModel):
     chunk_id: str
     page: int
     similarity: float
-    match_metadata: Optional[Dict[str, Any]] = None # New for Phase 3
+    text: Optional[str] = None # New for Phase 8 transparancy
+    match_metadata: Optional[Dict[str, Any]] = None
 
 class ChatResponse(BaseModel):
     answer: str

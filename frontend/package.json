@@ -1,24 +1,25 @@
 {
-  "name": "frontend",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "edulevel-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "axios": "^1.15.0",
-    "framer-motion": "^12.38.0",
-    "lucide-react": "^1.8.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
-    "typescript": "^6.0.3",
-    "vite": "^8.0.8"
+    "axios": "^1.6.7",
+    "framer-motion": "^11.0.3",
+    "lucide-react": "^0.330.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.1.0"
   }
 }
