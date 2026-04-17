@@ -1,0 +1,103 @@
+INFO:     Will watch for changes in these directories: ['/Users/amritkumarmahto/Edulevel']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [42199] using StatReload
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/amritkumarmahto/Edulevel/backend/services/embedding_service.py:14: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [42202]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+Loading local embedding model: all-MiniLM-L6-v2...
+Initialized Groq: llama-3.3-70b-versatile
+INFO:     127.0.0.1:50587 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50596 - "POST /api/chat HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'backend/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [42202]
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/amritkumarmahto/Edulevel/backend/services/embedding_service.py:14: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [43135]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+Loading local embedding model: all-MiniLM-L6-v2...
+Initialized Groq: llama-3.3-70b-versatile
+INFO:     127.0.0.1:50614 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50634 - "GET /api/static_images/CompressionAndRefraction.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50637 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50641 - "GET /api/static_images/ReflectionOfSound.png HTTP/1.1" 200 OK
+Generated embeddings for 33 images in topic 504b05ce-7264-4018-bf2b-96342b2259b9
+INFO:     127.0.0.1:50649 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50652 - "GET /api/toc/504b05ce-7264-4018-bf2b-96342b2259b9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50655 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50659 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50663 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50666 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50670 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50682 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50688 - "POST /api/chat HTTP/1.1" 200 OK
+LLM Error: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01k9xszapzft58vh6mvk5p4png` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 96692, Requested 4118. Please try again in 11m39.839999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+INFO:     127.0.0.1:50697 - "POST /api/chat HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'backend/services/llm_service.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [43135]
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/amritkumarmahto/Edulevel/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/amritkumarmahto/Edulevel/backend/services/embedding_service.py:14: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [47523]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+Loading local embedding model: all-MiniLM-L6-v2...
+Initialized Groq: llama-3.3-70b-versatile
+LLM Error: error code: 429 - {'error': {'message': 'rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01k9xszapzft58vh6mvk5p4png` service tier `on_demand` on tokens per day (tpd): limit 100000, used 96617, requested 4004. please try again in 8m56.544s. need more tokens? upgrade to dev tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+INFO:     127.0.0.1:50731 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50745 - "POST /api/chat HTTP/1.1" 200 OK
+                                                                                                                                         /Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 2 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

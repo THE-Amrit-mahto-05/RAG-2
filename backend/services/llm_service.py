@@ -120,8 +120,18 @@ class LLMService:
             }
 
         except Exception as e:
-            print(f"LLM Error: {e}")
-            return {"answer": f"Error generating answer: {str(e)}", "keywords": []}
+            error_msg = str(e).lower()
+            print(f"LLM Error: {error_msg}")
+            
+            # Map ugly provider errors to friendly student-facing messages
+            if "429" in error_msg or "rate limit" in error_msg:
+                friendly_message = "I'm currently receiving too many questions at once! Please wait a moment and try asking again."
+            elif "401" in error_msg or "authentication" in error_msg:
+                friendly_message = "There seems to be an issue with my API credentials. Please contact the administrator."
+            else:
+                friendly_message = "I encountered an unexpected error while thinking. Please try rephrasing your question."
+                
+            return {"answer": friendly_message, "keywords": []}
 
     def _check_groundedness(self, answer: str, context: str) -> bool:
         """Simple check to see if key factual terms in answer exist in context."""
