@@ -1,61 +1,128 @@
 import os
 import json
+import re
 from typing import List, Dict, Optional
 from groq import Groq
 
+# Optional imports for other providers
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
+
+import requests # For Ollama
+
 class LLMService:
-    def __init__(self, api_key: Optional[str] = None, model: str = "llama-3.1-70b-versatile"):
-        """Initializes the Groq LLM client."""
-        self.api_key = api_key or os.getenv("GROQ_API_KEY")
+    def __init__(self, provider: str = "groq", api_key: Optional[str] = None, model: Optional[str] = None):
+        """
+        Initializes the LLM service.
+        Providers: 'groq', 'openai', 'ollama'
+        """
+        self.provider = provider
         self.model = model
+        self.api_key = api_key or os.getenv(f"{provider.upper()}_API_KEY")
+
+        if provider == "groq":
+            if not self.api_key:
+                print("WARNING: Groq API Key not found.")
+                self.client = None
+            else:
+                self.client = Groq(api_key=self.api_key)
+                self.model = model or "llama-3.1-70b-versatile"
+                print(f"Initialized Groq: {self.model}")
         
-        if not self.api_key:
-            print("WARNING: Groq API Key not found. LLMService will run in mock mode.")
-            self.client = None
-        else:
-            self.client = Groq(api_key=self.api_key)
-            print(f"Initialized Groq LLM with model: {self.model}")
+        elif provider == "openai":
+            if not OpenAI:
+                raise ImportError("OpenAI package not installed.")
+            if not self.api_key:
+                print("WARNING: OpenAI API Key not found.")
+                self.client = None
+            else:
+                self.client = OpenAI(api_key=self.api_key)
+                self.model = model or "gpt-4o-mini"
+                print(f"Initialized OpenAI: {self.model}")
+        
+        elif provider == "ollama":
+            self.model = model or "llama3.1"
+            self.base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/api/chat")
+            print(f"Initialized Ollama: {self.model}")
 
-    def generate_answer(self, question: str, context: str, history: List[Dict] = []) -> str:
-        """Generates a contextualized response using Groq."""
-        if not self.client:
-            return "I'm currently in offline mode. Please configure the GROQ_API_KEY to enable live tutoring."
-
-        # Define the system personality and rules
+    def generate_answer(self, question: str, context: str, history: List[Dict] = []) -> Dict[str, Any]:
+        """Generates a contextualized response with a groundedness check."""
         system_prompt = """
         You are an expert, friendly AI tutor. Your goal is to explain concepts clearly from the provided textbook context.
         
         RULES:
-        1. Use ONLY the provided context to answer.
-        2. If the information isn't in the context, say: "Based on this chapter, I don't have enough information to answer that accurately."
-        3. Cite specific page numbers when mentioned in the context (e.g., "As mentioned on page 5...").
-        4. Keep explanations concise but thorough.
-        5. At the end of your response, list 3-5 keywords representing the main concepts as 'KEYWORDS: word1, word2, word3'.
+        1. Use ONLY the provided context to answer. 
+        2. If the info isn't in context, say: "Based on this chapter, I don't have enough information to answer that accurately."
+        3. Format: [Chunk X - Page Y]: {text}
+        4. Citations are MANDATORY for every factual claim.
+        5. At the end, MUST add: 'KEYWORDS: word1, word2, word3'
         """.strip()
 
-        # Construct the conversation messages
-        messages = [
-            {"role": "system", "content": system_prompt},
-        ]
-        
-        # Add conversation history (limited to last 5 exchanges)
+        messages = [{"role": "system", "content": system_prompt}]
         for msg in history[-10:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
-            
-        # Add current context and question
-        user_prompt = f"Context from Textbook:\n---\n{context}\n---\n\nStudent Question: {question}"
+        
+        user_prompt = f"Textbook Context:\n{context}\n\nStudent Question: {question}"
         messages.append({"role": "user", "content": user_prompt})
 
         try:
-            completion = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.3, # Lower temperature for factual accuracy
-                max_tokens=1024,
-                top_p=1,
-                stream=False
-            )
-            return completion.choices[0].message.content
+            full_response = ""
+            if self.provider == "groq" or self.provider == "openai":
+                if not self.client:
+                    return {"answer": "LLM provider is not configured.", "keywords": []}
+                
+                completion = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.2,
+                    max_tokens=2048
+                )
+                full_response = completion.choices[0].message.content
+            
+            elif self.provider == "ollama":
+                resp = requests.post(self.base_url, json={
+                    "model": self.model,
+                    "messages": messages,
+                    "stream": False,
+                    "options": {"temperature": 0.2}
+                })
+                full_response = resp.json()["message"]["content"]
+
+            # Post-Process: Extract Keywords
+            keywords = []
+            kw_match = re.search(r'KEYWORDS:\s*(.*)', full_response, re.IGNORECASE)
+            if kw_match:
+                keywords = [k.strip() for k in kw_match.group(1).split(',')]
+                # Remove keywords block from display answer
+                display_answer = full_response[:kw_match.start()].strip()
+            else:
+                display_answer = full_response
+
+            # Simple Groundedness Check (Noun/Verb overlap)
+            is_grounded = self._check_groundedness(display_answer, context)
+
+            return {
+                "answer": display_answer,
+                "keywords": keywords,
+                "is_grounded": is_grounded
+            }
+
         except Exception as e:
-            print(f"Error calling Groq API: {e}")
-            return f"I encountered an error while trying to generate an answer. Error: {str(e)}"
+            print(f"LLM Error: {e}")
+            return {"answer": f"Error generating answer: {str(e)}", "keywords": []}
+
+    def _check_groundedness(self, answer: str, context: str) -> bool:
+        """Simple check to see if key factual terms in answer exist in context."""
+        # This is a basic version; for production, one might use an LLM-based grader.
+        # We look for uncommon words (len > 5) in the answer.
+        answer_words = set(re.findall(r'\b\w{6,}\b', answer.lower()))
+        context_words = set(re.findall(r'\b\w+\b', context.lower()))
+        
+        if not answer_words: return True
+        
+        overlap = answer_words.intersection(context_words)
+        coverage = len(overlap) / len(answer_words)
+        
+        return coverage > 0.4 # Minimum 40% keyword overlap for safety

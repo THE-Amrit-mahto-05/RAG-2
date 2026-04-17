@@ -15,7 +15,7 @@ from backend.services.retrieval_engine import RetrievalEngine
 from backend.services.image_matcher import ImageMatcher
 from backend.services.llm_service import LLMService
 
-# Load environment variables (API keys, etc.)
+# Load environment variables
 load_dotenv()
 
 app = FastAPI(title="Edulevel RAG AI Tutor API")
@@ -39,7 +39,7 @@ for d in [UPLOAD_DIR, TOPICS_DIR, IMAGE_DIR]:
 # Serve images statically
 app.mount("/api/images", StaticFiles(directory=IMAGE_DIR), name="images")
 
-# Initialize shared services
+# Shared services
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "local")
 embedding_service = EmbeddingService(provider=EMBEDDING_PROVIDER)
 
@@ -49,15 +49,17 @@ image_matcher = ImageMatcher(IMAGE_DIR)
 pdf_processor = PDFProcessor()
 image_processor = ImageProcessor(IMAGE_DIR)
 
-# PHASE 4: Initialize LLM Service with Groq
+# PHASE 4 REFINEMENT: Initialize with dynamic provider
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
 llm_service = LLMService(
-    api_key=os.getenv("GROQ_API_KEY"),
-    model=os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
+    provider=LLM_PROVIDER,
+    api_key=os.getenv(f"{LLM_PROVIDER.upper()}_API_KEY"),
+    model=os.getenv("LLM_MODEL")
 )
 
 @app.get("/")
 async def root():
-    return {"message": f"Edulevel AI Tutor API is running with {EMBEDDING_PROVIDER} embeddings and Groq LLM"}
+    return {"message": f"Edulevel API: {EMBEDDING_PROVIDER} embeddings | {LLM_PROVIDER} LLM"}
 
 @app.post("/api/upload", response_model=TopicMetadata)
 async def upload_pdf(file: UploadFile = File(...)):
@@ -70,21 +72,20 @@ async def upload_pdf(file: UploadFile = File(...)):
     with open(file_path, "wb") as f:
         f.write(await file.read())
     
-    # Process PDF
+    # PDF Processing
     chunks = pdf_processor.process_pdf(file_path)
     
-    # Generate embeddings and update vector store
+    # Store with Phase 2 hierarchical structure
     chunk_texts = [c.text for c in chunks]
     embeddings = embedding_service.get_embeddings(chunk_texts)
-    
     vector_store.create_index(
         topic_id, 
         embeddings, 
         chunks, 
-        metadata={"provider": EMBEDDING_PROVIDER, "model": embedding_service.model_name or "default"}
+        metadata={"provider": EMBEDDING_PROVIDER}
     )
     
-    # Extract images and generate image embeddings
+    # Image extraction
     images = image_processor.extract_images(file_path, topic_id)
     image_processor.generate_image_embeddings(topic_id, images, embedding_service)
     
@@ -100,28 +101,37 @@ async def chat(request: ChatRequest):
     topic_id = request.topic_id
     question = request.question
     
-    # 1. Smarter Retrieval (Advanced RAG - Phase 3)
+    # 1. Advanced Retrieval (Phase 3 improvements)
     retrieved_results = retrieval_engine.retrieve_context(topic_id, question)
     if not retrieved_results:
         return ChatResponse(
-            answer="I couldn't find any relevant sections in the textbook for your question.",
+            answer="I couldn't find relevant textbook info. Try rephrasing!",
             sources=[],
             confidence=0.0
         )
     
     context = retrieval_engine.format_context_for_llm(retrieved_results)
     
-    # 2. Generate Real Answer via Groq
-    answer = llm_service.generate_answer(
+    # 2. Refined Generation (Phase 4 improvements)
+    generation = llm_service.generate_answer(
         question=question, 
         context=context, 
         history=request.conversation_history
     )
     
-    # 3. Match relevant image using semantic matching
-    best_image = image_matcher.get_best_image(topic_id, answer, embedding_service)
+    answer = generation["answer"]
+    keywords = generation["keywords"]
     
-    # 4. Standard Format for Sources with match metadata (Phase 3 Integration)
+    # 3. Semantic Image Matching (using keywords from LLM)
+    # We prioritize the first extracted keyword for matching
+    best_image = None
+    if keywords:
+        # Hybrid match: use both LLM answer and primary keyword for context
+        best_image = image_matcher.get_best_image(topic_id, f"{keywords[0]} {answer[:100]}", embedding_service)
+    else:
+        best_image = image_matcher.get_best_image(topic_id, answer, embedding_service)
+    
+    # 4. Sources with rich metadata
     sources = [
         Source(
             chunk_id=res["chunk"].id, 
@@ -132,11 +142,16 @@ async def chat(request: ChatRequest):
         for res in retrieved_results
     ]
     
+    # Confidence calculation (vaguely groundedness weighted)
+    confidence = sum(s.similarity for s in sources) / len(sources)
+    if not generation.get("is_grounded", True):
+        confidence *= 0.5 # De-prioritize ungrounded answers
+    
     return ChatResponse(
         answer=answer,
         image=best_image,
         sources=sources,
-        confidence=sum(s.similarity for s in sources) / len(sources) if sources else 0.0
+        confidence=confidence
     )
 
 if __name__ == "__main__":
