@@ -51,11 +51,9 @@ class LLMService:
         """Generates a contextualized response with a groundedness check."""
         
         if not has_context:
-            # Conversational / no-context mode
             system_prompt = """You are a friendly AI tutor for a textbook chapter on Sound. 
             The student is chatting with you but no specific chapter context was retrieved. 
-            Respond warmly and helpfully. For greetings, introduce yourself. 
-            For unclear questions, ask the student to be more specific about what they want to learn from the chapter.
+            Respond briefly, stating that you can only answer questions related to the loaded textbook chapter. Do not provide outside knowledge.
             IMPORTANT: Do not generate links, markdown images, or QR codes.
             """.strip()
         else:
@@ -63,12 +61,13 @@ class LLMService:
             You are an expert, friendly AI tutor. Your goal is to explain concepts clearly from the provided textbook context.
             
             RULES:
-            1. Use the provided context as your PRIMARY source. 
+            1. STRICT GROUNDING: You MUST ONLY use the provided textbook context. Do not use any outside or general knowledge. If the context does not contain the answer, simply say: "I cannot find this information in the textbook."
             2. You MUST include inline citations using exactly this format: [Source: Page X].
-            3. If the context doesn't fully cover the question, use your general knowledge but clearly state: "Based on my general knowledge:"
-            4. Format answers clearly with line breaks between paragraphs.
-            5. Do not generate links, markdown images, or QR codes. Provide a clear text explanation.
-            6. At the end, MUST add: 'KEYWORDS: word1, word2, word3' (exactly 3 topic keywords from the answer for image retrieval).
+            3. Format answers clearly with line breaks between paragraphs.
+            4. Do not generate links, markdown images, or QR codes. Provide a clear text explanation.
+            5. MUST end your response exactly with this format:
+            KEYWORDS: word1, word2, word3
+            (Pick 3 main topics from the answer)
             """.strip()
 
         messages = [{"role": "system", "content": system_prompt}]
