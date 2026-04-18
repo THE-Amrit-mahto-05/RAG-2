@@ -4,7 +4,7 @@ import fitz # PyMuPDF
 import numpy as np
 from PIL import Image, ImageStat
 from typing import List, Dict, Any
-from backend.services.embedding_service import EmbeddingService
+from services.embedding_service import EmbeddingService
 
 class ImageProcessor:
     def __init__(self, base_image_dir: str = "backend/data/images"):

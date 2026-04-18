@@ -6,15 +6,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
-from backend.api.schema import ChatRequest, ChatResponse, TopicMetadata, Source
-from backend.core.processor import PDFProcessor
-from backend.core.image_processor import ImageProcessor
-from backend.services.embedding_service import EmbeddingService
-from backend.services.vector_store import VectorStore
-from backend.services.retrieval_engine import RetrievalEngine
-from backend.services.image_matcher import ImageMatcher
-from backend.services.llm_service import LLMService
-from backend.services.semantic_cache import SemanticCache
+from api.schema import ChatRequest, ChatResponse, TopicMetadata, Source
+from core.processor import PDFProcessor
+from core.image_processor import ImageProcessor
+from services.embedding_service import EmbeddingService
+from services.vector_store import VectorStore
+from services.retrieval_engine import RetrievalEngine
+from services.image_matcher import ImageMatcher
+from services.llm_service import LLMService
+from services.semantic_cache import SemanticCache
 
 import traceback # For detailed error logging
 

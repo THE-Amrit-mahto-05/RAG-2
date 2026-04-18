@@ -3,8 +3,8 @@ import json
 import re
 import numpy as np
 from typing import Optional
-from backend.services.embedding_service import EmbeddingService
-from backend.api.schema import ImageInfo
+from services.embedding_service import EmbeddingService
+from api.schema import ImageInfo
 
 class ImageMatcher:
     def __init__(self, data_dir: str = None):

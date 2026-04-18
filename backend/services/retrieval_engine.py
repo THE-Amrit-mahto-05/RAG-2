@@ -1,8 +1,8 @@
 import re
 from typing import List, Dict, Any
-from backend.services.embedding_service import EmbeddingService
-from backend.services.vector_store import VectorStore
-from backend.api.schema import Source, Chunk
+from services.embedding_service import EmbeddingService
+from services.vector_store import VectorStore
+from api.schema import Source, Chunk
 
 class RetrievalEngine:
     def __init__(self, embedding_service: EmbeddingService, vector_store: VectorStore):

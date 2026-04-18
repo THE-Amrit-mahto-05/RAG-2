@@ -1,7 +1,7 @@
 import fitz  # PyMuPDF
 import re
 from typing import List, Dict
-from backend.api.schema import Chunk
+from api.schema import Chunk
 
 class PDFProcessor:
     def __init__(self, chunk_size: int = 800, chunk_overlap: int = 150):

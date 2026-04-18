@@ -3,7 +3,7 @@ import os
 import json
 import numpy as np
 from typing import List, Dict, Any
-from backend.api.schema import Chunk
+from api.schema import Chunk
 
 class VectorStore:
     def __init__(self, dimension: int, base_path: str = "backend/data/topics"):
