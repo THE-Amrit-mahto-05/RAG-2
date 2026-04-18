@@ -32,6 +32,7 @@ class Source(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
-    image: Optional[ImageInfo] = None
+    image: Optional[ImageInfo] = None         # Legacy: best single image
+    images: List[ImageInfo] = []              # New: top matched images (up to 3)
     sources: List[Source]
     confidence: float

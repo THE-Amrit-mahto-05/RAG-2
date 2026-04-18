@@ -23,22 +23,46 @@ const getImageUrl = (url: string) => {
   return resolvedUrl;
 };
 
+interface ImageInfo { url: string; title: string; description: string; }
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  image?: {
-    url: string;
-    title: string;
-    description: string;
-  };
-  sources?: {
-    chunk_id: string;
-    page: number;
-    similarity: number;
-    match_metadata?: any;
-  }[];
+  image?: ImageInfo;        // legacy single image
+  images?: ImageInfo[];     // new: up to 3 matched figures
+  diagram?: string;         // AI-generated SVG when no photo found
+  sources?: { chunk_id: string; page: number; similarity: number; match_metadata?: any; }[];
   isDivider?: boolean;
 }
+
+// --- Figure Carousel Component ---
+const FigureCarousel: React.FC<{ images: ImageInfo[] }> = ({ images }) => {
+  const [idx, setIdx] = React.useState(0);
+  if (!images || images.length === 0) return null;
+  const current = images[idx];
+  return (
+    <div className="mt-4 border border-slate-200 rounded-xl bg-white p-3 shadow-md inline-block max-w-[90%]">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] text-indigo-500 font-bold uppercase tracking-tight">📖 Textbook Figures ({idx + 1}/{images.length})</span>
+        <div className="flex gap-1">
+          <button onClick={() => setIdx(i => Math.max(0, i - 1))} disabled={idx === 0}
+            className="px-2 py-0.5 text-xs bg-slate-100 rounded disabled:opacity-30 hover:bg-indigo-50 transition-colors">‹ Prev</button>
+          <button onClick={() => setIdx(i => Math.min(images.length - 1, i + 1))} disabled={idx === images.length - 1}
+            className="px-2 py-0.5 text-xs bg-slate-100 rounded disabled:opacity-30 hover:bg-indigo-50 transition-colors">Next ›</button>
+        </div>
+      </div>
+      <img
+        key={current.url}
+        src={getImageUrl(current.url)}
+        alt={current.title || "Textbook Diagram"}
+        className="max-w-full h-auto rounded-lg border border-slate-100"
+        onError={(e) => (e.currentTarget.style.display = 'none')}
+      />
+      <p className="text-xs text-slate-500 mt-2 italic font-medium leading-snug">
+        {current.title || "Relevant diagram from the chapter."}
+      </p>
+    </div>
+  );
+};
 
 const App: React.FC = () => {
   const [topicId, setTopicId] = useState<string | null>(null);
@@ -131,6 +155,8 @@ const App: React.FC = () => {
         role: 'assistant',
         content: response.data.answer,
         image: response.data.image,
+        images: response.data.images || [],
+        diagram: response.data.diagram || null,
         sources: response.data.sources
       };
       setMessages(prev => [...prev, assistantMessage]);
@@ -166,6 +192,8 @@ const App: React.FC = () => {
         role: 'assistant',
         content: response.data.answer,
         image: response.data.image,
+        images: response.data.images || [],
+        diagram: response.data.diagram || null,
         sources: response.data.sources
       };
       setMessages(prev => [...prev, assistantMessage]);
@@ -275,19 +303,9 @@ const App: React.FC = () => {
                         .replace(/<img[^>]*>/g, '')         // Remove HTML images
                       }
                     </div>
-                    {msg.image && (
-                      <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden bg-white p-3 shadow-md inline-block max-w-[90%]">
-                        <div className="text-[10px] text-indigo-500 font-bold mb-2 uppercase tracking-tight">Textbook Figure:</div>
-                        <img 
-                          src={getImageUrl(msg.image.url)} 
-                          alt={msg.image.title || "Textbook Diagram"} 
-                          className="max-w-full h-auto rounded-lg border border-slate-100" 
-                          onError={(e) => (e.currentTarget.style.display = 'none')}
-                        />
-                        <p className="text-xs text-slate-500 mt-2 italic font-medium leading-snug">
-                          {msg.image.title || "Relevant diagram retrieved from the chapter core concepts."}
-                        </p>
-                      </div>
+                    {/* --- Multi-Image Carousel (PDF extracted figures only) --- */}
+                    {msg.images && msg.images.length > 0 && (
+                      <FigureCarousel images={msg.images} />
                     )}
                   </motion.div>
                 )})}

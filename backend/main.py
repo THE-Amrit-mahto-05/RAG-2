@@ -278,23 +278,16 @@ async def chat(request: ChatRequest):
     answer = generation["answer"]
     keywords = generation["keywords"]
     
-    # 3. Dynamic Image Matching — now with page-context boost
-    # Extract which pages the AI used to build this answer
+    # 3. Multi-Image Matching — page-context boosted, top 3 relevant figures
     context_pages = list(set(r["chunk"].page for r in retrieved_results)) if retrieved_results else []
+    query_str = f"{' '.join(keywords)} {answer}" if keywords else answer
     
-    best_image_info = None
-    if keywords:
-        best_image_info = image_matcher.get_best_image(
-            topic_id, f"{' '.join(keywords)} {answer}", 
-            embedding_service, threshold=0.2, context_pages=context_pages
-        )
-    elif has_context:
-        best_image_info = image_matcher.get_best_image(
-            topic_id, answer, 
-            embedding_service, threshold=0.2, context_pages=context_pages
-        )
-        
-    best_image = best_image_info.dict() if best_image_info else None
+    top_images = image_matcher.get_top_images(
+        topic_id, query_str,
+        embedding_service, threshold=0.45, context_pages=context_pages, top_n=3
+    )
+
+    best_image = top_images[0].dict() if top_images else None
     
     # 4. Sources with rich metadata and raw text
     sources = retrieval_engine.get_sources_with_text(retrieved_results)
@@ -310,6 +303,7 @@ async def chat(request: ChatRequest):
     response_data = {
         "answer": answer,
         "image": best_image,
+        "images": [img.dict() for img in top_images],
         "sources": [s.dict() for s in sources],
         "confidence": confidence
     }
@@ -318,6 +312,7 @@ async def chat(request: ChatRequest):
     return ChatResponse(
         answer=answer,
         image=best_image,
+        images=top_images,
         sources=sources,
         confidence=confidence
     )
