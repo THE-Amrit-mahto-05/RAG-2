@@ -9,6 +9,7 @@ env/
 pip-log.txt
 pip-delete-this-directory.txt
 .venv
+
 # Environments & Secrets
 .env
 .env.local
@@ -34,11 +35,22 @@ dist-ssr/
 .output
 .vercel
 
-# Project Specific Data
+# Project-Specific User Data (never commit uploaded PDFs or extracted images)
 backend/data/uploads/*
 backend/data/images/*
 backend/data/processed/*
 !backend/data/.gitkeep
+~/.edulevel/
+
+# Development & Test Artifacts (clean repo)
+*.log
+uvicorn*.log
+test*.py
+test*.json
+tmp*.json
+test*.png
+reprocess_images.py
+create_static_embeddings.py
 
 # OS
 .DS_Store
