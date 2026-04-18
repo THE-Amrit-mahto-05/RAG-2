@@ -172,7 +172,7 @@ const App: React.FC = () => {
       
       {/* --- HEADER --- */}
       <header className="header-main">
-        <h1 className="header-title">EDU AI TUTOR</h1>
+        <h1 className="header-title">EDU AI TUTOR v2 (Ready)</h1>
       </header>
 
       {/* --- LEFT SIDEBAR --- */}
