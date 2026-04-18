@@ -23,6 +23,14 @@ load_dotenv(override=True)
 
 app = FastAPI(title="Edulevel RAG AI Tutor API")
 
+@app.on_event("startup")
+async def list_routes():
+    print("\n--- 🚀 Registered API Routes ---")
+    for route in app.routes:
+        if hasattr(route, "path") and hasattr(route, "methods"):
+            print(f"[{' | '.join(route.methods)}] {route.path}")
+    print("--------------------------------\n")
+
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
@@ -74,6 +82,7 @@ async def root():
     return {"message": f"Edulevel API: {EMBEDDING_PROVIDER} embeddings | {LLM_PROVIDER} LLM"}
 
 @app.post("/upload", response_model=TopicMetadata)
+@app.post("/api/upload", response_model=TopicMetadata)
 async def upload_pdf(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
@@ -115,6 +124,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @app.get("/toc/{topic_id}")
+@app.get("/api/toc/{topic_id}")
 async def get_toc(topic_id: str):
     """Extracts real section headings from processed PDF chunks."""
     import json, re
@@ -181,6 +191,7 @@ async def get_toc(topic_id: str):
     return {"topic_id": topic_id, "toc": toc}
 
 @app.post("/chat", response_model=ChatResponse)
+@app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     topic_id = request.topic_id
     question = request.question
