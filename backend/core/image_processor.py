@@ -140,7 +140,7 @@ class ImageProcessor:
                     extracted_images.append({
                         "id": f"img_{image_count}",
                         "path": image_path,
-                        "url": f"/api/images/{topic_id}/{image_filename}",
+                        "url": f"/images/{topic_id}/{image_filename}",
                         "page": i + 1,
                         "title": caption[:100],
                         "description": caption

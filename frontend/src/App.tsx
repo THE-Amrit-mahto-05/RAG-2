@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
 // Configure Production API URL
-const API_URL = (import.meta.env.VITE_API_URL as string) || '/api';
+const API_URL = (import.meta.env.VITE_API_URL as string) || '';
 axios.defaults.baseURL = API_URL;
+console.log("Connect to API:", API_URL || "Local (relative)");
 
 interface Message {
   role: 'user' | 'assistant';
@@ -61,7 +62,7 @@ const App: React.FC = () => {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('/api/upload', formData, { 
+      const response = await axios.post('/upload', formData, { 
         timeout: 300000 // 5 minutes for processing large PDFs
       });
       const newTopicId = response.data.id;
@@ -69,7 +70,7 @@ const App: React.FC = () => {
       
       // Fetch real TOC from backend
       try {
-        const tocResponse = await axios.get(`/api/toc/${newTopicId}`);
+        const tocResponse = await axios.get(`/toc/${newTopicId}`);
         setToc(tocResponse.data.toc);
       } catch {
         // Fallback to generic headings
@@ -106,7 +107,7 @@ const App: React.FC = () => {
     setIsChatting(true);
 
     try {
-      const response = await axios.post('/api/chat', {
+      const response = await axios.post('/chat', {
         topic_id: topicId,
         question: questionText,
         conversation_history: messages.map(m => ({ role: m.role, content: m.content }))
@@ -140,7 +141,7 @@ const App: React.FC = () => {
     setIsChatting(true);
 
     try {
-      const response = await axios.post('/api/chat', {
+      const response = await axios.post('/chat', {
         topic_id: topicId,
         question: input,
         conversation_history: messages.map(m => ({ role: m.role, content: m.content }))

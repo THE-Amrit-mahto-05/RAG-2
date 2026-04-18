@@ -43,12 +43,12 @@ for d in [UPLOAD_DIR, TOPICS_DIR, IMAGE_DIR, CACHE_DIR]:
     os.makedirs(d, exist_ok=True)
 
 # Serve images statically
-app.mount("/api/images", StaticFiles(directory=IMAGE_DIR), name="images")
+app.mount("/images", StaticFiles(directory=IMAGE_DIR), name="images")
 
 # Add static mount for pre-provided assignment images
 SOUND_DIR = "backend/data/Sound"
 os.makedirs(SOUND_DIR, exist_ok=True)
-app.mount("/api/static_images", StaticFiles(directory=SOUND_DIR), name="static_images")
+app.mount("/static_images", StaticFiles(directory=SOUND_DIR), name="static_images")
 
 # Shared services
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "local")
@@ -73,7 +73,7 @@ llm_service = LLMService(
 async def root():
     return {"message": f"Edulevel API: {EMBEDDING_PROVIDER} embeddings | {LLM_PROVIDER} LLM"}
 
-@app.post("/api/upload", response_model=TopicMetadata)
+@app.post("/upload", response_model=TopicMetadata)
 async def upload_pdf(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
@@ -114,7 +114,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
-@app.get("/api/toc/{topic_id}")
+@app.get("/toc/{topic_id}")
 async def get_toc(topic_id: str):
     """Extracts real section headings from processed PDF chunks."""
     import json, re
@@ -180,7 +180,7 @@ async def get_toc(topic_id: str):
     
     return {"topic_id": topic_id, "toc": toc}
 
-@app.post("/api/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     topic_id = request.topic_id
     question = request.question
