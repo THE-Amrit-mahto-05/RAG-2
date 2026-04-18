@@ -15,7 +15,7 @@ class ImageMatcher:
         else:
             self.data_dir = data_dir
 
-    def get_best_image(self, topic_id: str, query_response: str, embedding_service: EmbeddingService, threshold: float = 0.4) -> Optional[ImageInfo]:
+    def get_best_image(self, topic_id: str, query_response: str, embedding_service: EmbeddingService, threshold: float = 0.4, context_pages: list = None) -> Optional[ImageInfo]:
         """
         Dynamically finds the most relevant image using a Semantic approach on the specific uploaded topic's Images.
         """
@@ -56,6 +56,12 @@ class ImageMatcher:
             # Boost the score if we found a strong keyword overlap
             if keyword_match_idx != -1:
                 similarities[keyword_match_idx] += (max_kw_overlap * 0.15) 
+
+            # ✅ PAGE-CONTEXT BOOST: Prioritize images from the pages the AI is currently discussing
+            if context_pages:
+                for idx, meta in enumerate(images_metadata):
+                    if meta.get("page") in context_pages:
+                        similarities[idx] += 0.35  # Strong boost to prefer contextually relevant pages
 
             best_idx = int(np.argmax(similarities))
             best_score = float(similarities[best_idx])

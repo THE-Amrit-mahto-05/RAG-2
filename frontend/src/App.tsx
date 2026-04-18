@@ -8,6 +8,21 @@ const API_URL = (import.meta.env.VITE_API_URL as string) || '';
 axios.defaults.baseURL = API_URL;
 console.log("Connect to API:", API_URL || "Local (relative)");
 
+// Helper to resolve image URLs based on current API base
+const getImageUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  
+  // Local environment needs to point to the backend port (8000) explicitly for images
+  const localBase = "http://localhost:8000";
+  const cleanBase = axios.defaults.baseURL?.replace(/\/+$/, '') || localBase;
+  
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  const resolvedUrl = `${cleanBase}${cleanUrl}`;
+  console.log("Loading Image From:", resolvedUrl);
+  return resolvedUrl;
+};
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -172,7 +187,7 @@ const App: React.FC = () => {
       
       {/* --- HEADER --- */}
       <header className="header-main">
-        <h1 className="header-title">EDU AI TUTOR v2 (Ready)</h1>
+        <h1 className="header-title">EDU AI TUTOR</h1>
       </header>
 
       {/* --- LEFT SIDEBAR --- */}
@@ -200,7 +215,7 @@ const App: React.FC = () => {
                       : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50 px-2 rounded'
                   } ${isChatting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <span className="mr-2 text-slate-400 font-mono text-xs">{t.section ?? t.page}</span>
+                  <span className="mr-2 text-slate-400 font-mono text-xs">{t.section || `P${t.page}`}</span>
                   <span className="flex-1 leading-tight py-1">{t.title}</span>
                   {isChatting && activeTopicIndex === i && (
                     <Loader2 size={12} className="ml-auto animate-spin text-indigo-400" />
@@ -264,7 +279,7 @@ const App: React.FC = () => {
                       <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden bg-white p-3 shadow-md inline-block max-w-[90%]">
                         <div className="text-[10px] text-indigo-500 font-bold mb-2 uppercase tracking-tight">Textbook Figure:</div>
                         <img 
-                          src={msg.image.url} 
+                          src={getImageUrl(msg.image.url)} 
                           alt={msg.image.title || "Textbook Diagram"} 
                           className="max-w-full h-auto rounded-lg border border-slate-100" 
                           onError={(e) => (e.currentTarget.style.display = 'none')}
