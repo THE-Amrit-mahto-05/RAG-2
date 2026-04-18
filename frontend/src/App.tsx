@@ -57,7 +57,9 @@ const App: React.FC = () => {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('/api/upload', formData);
+      const response = await axios.post('/api/upload', formData, { 
+        timeout: 300000 // 5 minutes for processing large PDFs
+      });
       const newTopicId = response.data.id;
       setTopicId(newTopicId);
       

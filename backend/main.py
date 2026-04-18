@@ -16,6 +16,8 @@ from backend.services.image_matcher import ImageMatcher
 from backend.services.llm_service import LLMService
 from backend.services.semantic_cache import SemanticCache
 
+import traceback # For detailed error logging
+
 # Load environment variables
 load_dotenv()
 
@@ -30,11 +32,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize directories
-UPLOAD_DIR = "backend/data/uploads"
-TOPICS_DIR = "backend/data/topics"
-IMAGE_DIR = "backend/data/images"
-for d in [UPLOAD_DIR, TOPICS_DIR, IMAGE_DIR]:
+# Initialize directories (Moved outside project root to prevent StatReload loops)
+BASE_DATA_DIR = os.path.expanduser("~/.edulevel/data")
+UPLOAD_DIR = os.path.join(BASE_DATA_DIR, "uploads")
+TOPICS_DIR = os.path.join(BASE_DATA_DIR, "topics")
+IMAGE_DIR = os.path.join(BASE_DATA_DIR, "images")
+CACHE_DIR = os.path.join(BASE_DATA_DIR, "cache")
+
+for d in [UPLOAD_DIR, TOPICS_DIR, IMAGE_DIR, CACHE_DIR]:
     os.makedirs(d, exist_ok=True)
 
 # Serve images statically
@@ -54,7 +59,7 @@ retrieval_engine = RetrievalEngine(embedding_service, vector_store)
 image_matcher = ImageMatcher(IMAGE_DIR)
 pdf_processor = PDFProcessor()
 image_processor = ImageProcessor(IMAGE_DIR)
-semantic_cache = SemanticCache(data_dir="backend/data/cache", max_size=60)
+semantic_cache = SemanticCache(data_dir=CACHE_DIR, max_size=60)
 
 # PHASE 4 REFINEMENT: Initialize with dynamic provider
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
@@ -76,32 +81,38 @@ async def upload_pdf(file: UploadFile = File(...)):
     topic_id = str(uuid.uuid4())
     file_path = os.path.join(UPLOAD_DIR, f"{topic_id}.pdf")
     
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
-    
-    # PDF Processing
-    chunks = pdf_processor.process_pdf(file_path)
-    
-    # Store with Phase 2 hierarchical structure
-    chunk_texts = [c.text for c in chunks]
-    embeddings = embedding_service.get_embeddings(chunk_texts)
-    vector_store.create_index(
-        topic_id, 
-        embeddings, 
-        chunks, 
-        metadata={"provider": EMBEDDING_PROVIDER}
-    )
-    
-    # Image extraction
-    images = image_processor.extract_images(file_path, topic_id)
-    image_processor.generate_image_embeddings(topic_id, images, embedding_service)
-    
-    return TopicMetadata(
-        id=topic_id,
-        filename=file.filename,
-        chunk_count=len(chunks),
-        status="processed"
-    )
+    try:
+        # Save uploaded file
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
+        
+        # PDF Processing
+        chunks = pdf_processor.process_pdf(file_path)
+        
+        # Store embeddings
+        chunk_texts = [c.text for c in chunks]
+        embeddings = embedding_service.get_embeddings(chunk_texts)
+        vector_store.create_index(
+            topic_id, 
+            embeddings, 
+            chunks, 
+            metadata={"provider": EMBEDDING_PROVIDER}
+        )
+        
+        # Image extraction (can take time)
+        images = image_processor.extract_images(file_path, topic_id)
+        image_processor.generate_image_embeddings(topic_id, images, embedding_service)
+        
+        return TopicMetadata(
+            id=topic_id,
+            filename=file.filename,
+            chunk_count=len(chunks),
+            status="processed"
+        )
+    except Exception as e:
+        print(f"CRITICAL ERROR DURING UPLOAD: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @app.get("/api/toc/{topic_id}")
 async def get_toc(topic_id: str):
