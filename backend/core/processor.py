@@ -14,11 +14,22 @@ class PDFProcessor:
         pages_content = []
         for page_num in range(len(doc)):
             page = doc.load_page(page_num)
-            text = page.get_text("text")
-            # Clean up text (remove excessive horizontal whitespace but preserve newlines)
+            blocks = page.get_text("blocks")
+            cleaned_blocks = []
+            
+            for b in blocks:
+                # b[6] == 0 denotes a standard text block
+                if b[6] == 0:
+                    block_text = b[4].strip()
+                    # Collapse internal single newlines into spaces to fix fragmented formulas
+                    block_text = re.sub(r'(?<!\n)\n(?!\n)', ' ', block_text)
+                    if block_text:
+                        cleaned_blocks.append(block_text)
+                        
+            text = "\n\n".join(cleaned_blocks)
+            # Clean up excessive horizontal whitespace
             text = re.sub(r'[ \t]+', ' ', text).strip()
-            # Normalize multiple newlines to double newlines for paragraph spacing
-            text = re.sub(r'\n{3,}', '\n\n', text)
+            
             if text:
                 pages_content.append({
                     "page": page_num + 1,
