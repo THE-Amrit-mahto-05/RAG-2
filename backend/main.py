@@ -54,6 +54,20 @@ CACHE_DIR = os.path.join(BASE_DATA_DIR, "cache")
 for d in [UPLOAD_DIR, TOPICS_DIR, IMAGE_DIR, CACHE_DIR]:
     os.makedirs(d, exist_ok=True)
 
+from fastapi import APIRouter
+router = APIRouter(redirect_slashes=False)
+
+@router.get("/")
+async def root_check():
+    return {"status": "ok", "service": "Edulevel AI Tutor"}
+
+@router.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+# Include the router BEFORE mounts to ensure precedence
+app.include_router(router)
+
 # Serve images statically
 app.mount("/images", StaticFiles(directory=IMAGE_DIR), name="images")
 
@@ -61,6 +75,7 @@ app.mount("/images", StaticFiles(directory=IMAGE_DIR), name="images")
 SOUND_DIR = "backend/data/Sound"
 os.makedirs(SOUND_DIR, exist_ok=True)
 app.mount("/static_images", StaticFiles(directory=SOUND_DIR), name="static_images")
+
 
 # Shared services
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "local")
@@ -81,13 +96,10 @@ llm_service = LLMService(
     model=os.getenv("LLM_MODEL")
 )
 
-@app.get("/")
-async def root():
-    return {"message": f"Edulevel API: {EMBEDDING_PROVIDER} embeddings | {LLM_PROVIDER} LLM"}
-
-@app.post("/upload", response_model=TopicMetadata)
-@app.post("/api/upload", response_model=TopicMetadata)
+@router.post("/upload", response_model=TopicMetadata)
+@router.post("/api/upload", response_model=TopicMetadata)
 async def upload_pdf(file: UploadFile = File(...)):
+
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
     
@@ -127,9 +139,10 @@ async def upload_pdf(file: UploadFile = File(...)):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
-@app.get("/toc/{topic_id}")
-@app.get("/api/toc/{topic_id}")
+@router.get("/toc/{topic_id}")
+@router.get("/api/toc/{topic_id}")
 async def get_toc(topic_id: str):
+
     """Extracts real section headings from processed PDF chunks."""
     import json, re
     chunks_path = os.path.join(TOPICS_DIR, topic_id, "chunks.json")
@@ -194,9 +207,10 @@ async def get_toc(topic_id: str):
     
     return {"topic_id": topic_id, "toc": toc}
 
-@app.post("/chat", response_model=ChatResponse)
-@app.post("/api/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse)
+@router.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
+
     topic_id = request.topic_id
     question = request.question
     

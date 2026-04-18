@@ -6,7 +6,12 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api': 'http://localhost:8000'
+      '/upload': 'http://localhost:8000',
+      '/chat': 'http://localhost:8000',
+      '/toc': 'http://localhost:8000',
+      '/images': 'http://localhost:8000',
+      '/static_images': 'http://localhost:8000',
+      '/health': 'http://localhost:8000'
     }
   }
 })
