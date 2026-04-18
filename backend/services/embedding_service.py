@@ -10,13 +10,16 @@ class EmbeddingService:
         Providers: 'local' (Dedicated for lightweight deployment)
         """
         self.provider = "local"
-        self.model_name = model_name
-        self.dimension = 0
-        
-        name = model_name or "all-MiniLM-L6-v2"
-        print(f"Loading local embedding model: {name}...")
-        self.model = SentenceTransformer(name)
-        self.dimension = self.model.get_sentence_embedding_dimension()
+        self.model_name = model_name or "all-MiniLM-L6-v2"
+        self._model = None
+        self.dimension = 384 # Known dimension for all-MiniLM-L6-v2
+
+    @property
+    def model(self):
+        if self._model is None:
+            print(f"Lazy loading embedding model: {self.model_name}...")
+            self._model = SentenceTransformer(self.model_name)
+        return self._model
 
     def get_embeddings(self, texts: List[str]) -> np.ndarray:
         """Generates embeddings for a list of strings (supports batching)."""

@@ -21,15 +21,19 @@ import traceback # For detailed error logging
 # Load environment variables (Forced override to pick up settings from .env)
 load_dotenv(override=True)
 
-app = FastAPI(title="Edulevel RAG AI Tutor API")
+from contextlib import asynccontextmanager
 
-@app.on_event("startup")
-async def list_routes():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup Diagnostic
     print("\n--- 🚀 Registered API Routes ---")
     for route in app.routes:
         if hasattr(route, "path") and hasattr(route, "methods"):
             print(f"[{' | '.join(route.methods)}] {route.path}")
     print("--------------------------------\n")
+    yield
+
+app = FastAPI(title="Edulevel RAG AI Tutor API", lifespan=lifespan)
 
 # Enable CORS
 app.add_middleware(
