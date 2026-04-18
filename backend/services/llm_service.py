@@ -5,68 +5,36 @@ import time
 from typing import List, Dict, Optional, Any
 from groq import Groq
 
-# Optional imports for other providers
-try:
-    from openai import OpenAI
-except ImportError:
-    OpenAI = None
-
-try:
-    import google.generativeai as genai
-except ImportError:
-    genai = None
-
-import requests # For Ollama
-
 class LLMService:
     def __init__(self, provider: str = "groq", api_key: Optional[str] = None, model: Optional[str] = None):
         """
         Initializes the LLM service.
-        Providers: 'groq', 'openai', 'ollama', 'google'
+        Providers: 'groq' (Dedicated for lightweight deployment)
         """
-        self.provider = provider
+        self.provider = "groq"
         self.model = model
         
         # --- GROQ Multi-Key Support ---
         self.groq_keys = []
-        if provider == "groq":
-            primary_key = api_key or os.getenv("GROQ_API_KEY")
-            if primary_key: self.groq_keys.append(primary_key)
-            
-            idx = 2
-            while True:
-                extra_key = os.getenv(f"GROQ_API_KEY_{idx}")
-                if extra_key:
-                    self.groq_keys.append(extra_key)
-                    idx += 1
-                else: break
-            
-            self.current_groq_idx = 0
-            if not self.groq_keys:
-                print("WARNING: No Groq API Keys found.")
-                self.client = None
-            else:
-                self.client = Groq(api_key=self.groq_keys[0])
-                self.model = model or "llama-3.1-8b-instant"
-                print(f"Initialized Groq with {len(self.groq_keys)} available keys. Model: {self.model}")
+        primary_key = api_key or os.getenv("GROQ_API_KEY")
+        if primary_key: self.groq_keys.append(primary_key)
         
-        elif provider == "google":
-            if not genai:
-                raise ImportError("google-generativeai package not installed.")
-            self.api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-            if self.api_key:
-                genai.configure(api_key=self.api_key)
-                self.model = model or "gemini-1.5-flash"
-                print(f"Initialized Google Gemini: {self.model}")
+        idx = 2
+        while True:
+            extra_key = os.getenv(f"GROQ_API_KEY_{idx}")
+            if extra_key:
+                self.groq_keys.append(extra_key)
+                idx += 1
+            else: break
         
-        elif provider == "openai":
-            if not OpenAI:
-                raise ImportError("OpenAI package not installed.")
-            self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-            if self.api_key:
-                self.client = OpenAI(api_key=self.api_key)
-                self.model = model or "gpt-4o-mini"
-                print(f"Initialized OpenAI: {self.model}")
+        self.current_groq_idx = 0
+        if not self.groq_keys:
+            print("WARNING: No Groq API Keys found.")
+            self.client = None
+        else:
+            self.client = Groq(api_key=self.groq_keys[0])
+            self.model = model or "llama-3.1-8b-instant"
+            print(f"Initialized Groq with {len(self.groq_keys)} available keys. Model: {self.model}")
 
     def _rotate_groq_key(self):
         """Switches to the next available Groq API key. Returns True if a full cycle is completed."""
