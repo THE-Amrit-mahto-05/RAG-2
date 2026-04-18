@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import time
 from typing import List, Dict, Optional, Any
 from groq import Groq
 
@@ -10,43 +11,73 @@ try:
 except ImportError:
     OpenAI = None
 
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+
 import requests # For Ollama
 
 class LLMService:
     def __init__(self, provider: str = "groq", api_key: Optional[str] = None, model: Optional[str] = None):
         """
         Initializes the LLM service.
-        Providers: 'groq', 'openai', 'ollama'
+        Providers: 'groq', 'openai', 'ollama', 'google'
         """
         self.provider = provider
         self.model = model
-        self.api_key = api_key or os.getenv(f"{provider.upper()}_API_KEY")
-
+        
+        # --- GROQ Multi-Key Support ---
+        self.groq_keys = []
         if provider == "groq":
-            if not self.api_key:
-                print("WARNING: Groq API Key not found.")
+            primary_key = api_key or os.getenv("GROQ_API_KEY")
+            if primary_key: self.groq_keys.append(primary_key)
+            
+            idx = 2
+            while True:
+                extra_key = os.getenv(f"GROQ_API_KEY_{idx}")
+                if extra_key:
+                    self.groq_keys.append(extra_key)
+                    idx += 1
+                else: break
+            
+            self.current_groq_idx = 0
+            if not self.groq_keys:
+                print("WARNING: No Groq API Keys found.")
                 self.client = None
             else:
-                self.client = Groq(api_key=self.api_key)
-                self.model = model or "llama-3.1-70b-versatile"
-                print(f"Initialized Groq: {self.model}")
+                self.client = Groq(api_key=self.groq_keys[0])
+                self.model = model or "llama-3.3-70b-versatile"
+                print(f"Initialized Groq with {len(self.groq_keys)} available keys. Active: Key 1")
+        
+        elif provider == "google":
+            if not genai:
+                raise ImportError("google-generativeai package not installed.")
+            self.api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+            if self.api_key:
+                genai.configure(api_key=self.api_key)
+                self.model = model or "gemini-1.5-flash"
+                print(f"Initialized Google Gemini: {self.model}")
         
         elif provider == "openai":
             if not OpenAI:
                 raise ImportError("OpenAI package not installed.")
-            if not self.api_key:
-                print("WARNING: OpenAI API Key not found.")
-                self.client = None
-            else:
+            self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+            if self.api_key:
                 self.client = OpenAI(api_key=self.api_key)
                 self.model = model or "gpt-4o-mini"
                 print(f"Initialized OpenAI: {self.model}")
-        
-        elif provider == "ollama":
-            self.model = model or "llama3.1"
-            self.base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/api/chat")
-            print(f"Initialized Ollama: {self.model}")
 
+    def _rotate_groq_key(self):
+        """Switches to the next available Groq API key if one exists."""
+        if self.provider == "groq" and len(self.groq_keys) > 1:
+            self.current_groq_idx = (self.current_groq_idx + 1) % len(self.groq_keys)
+            new_key = self.groq_keys[self.current_groq_idx]
+            self.client = Groq(api_key=new_key)
+            print(f"🔄 Swapped to Groq Backup Key (Key {self.current_groq_idx + 1})")
+            return True
+        return False
+        
     def generate_answer(self, question: str, context: str, history: List[Dict] = [], has_context: bool = True) -> Dict[str, Any]:
         """Generates a contextualized response with a groundedness check."""
         
@@ -77,61 +108,90 @@ class LLMService:
         user_prompt = f"Textbook Context:\n{context}\n\nStudent Question: {question}"
         messages.append({"role": "user", "content": user_prompt})
 
-        try:
-            full_response = ""
-            if self.provider == "groq" or self.provider == "openai":
-                if not self.client:
-                    return {"answer": "LLM provider is not configured.", "keywords": []}
+        max_retries = 3
+        retry_delay = 2 # seconds
+
+        for attempt in range(max_retries):
+            try:
+                full_response = ""
+                if self.provider == "groq" or self.provider == "openai":
+                    if not self.client:
+                        return {"answer": "LLM provider is not configured.", "keywords": []}
+                    
+                    completion = self.client.chat.completions.create(
+                        model=self.model,
+                        messages=messages,
+                        temperature=0.2,
+                        max_tokens=2048
+                    )
+                    full_response = completion.choices[0].message.content
                 
-                completion = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=0.2,
-                    max_tokens=2048
-                )
-                full_response = completion.choices[0].message.content
-            
-            elif self.provider == "ollama":
-                resp = requests.post(self.base_url, json={
-                    "model": self.model,
-                    "messages": messages,
-                    "stream": False,
-                    "options": {"temperature": 0.2}
-                })
-                full_response = resp.json()["message"]["content"]
+                elif self.provider == "google":
+                    if not genai:
+                        return {"answer": "Google Generative AI package not installed.", "keywords": []}
+                    
+                    model = genai.GenerativeModel(self.model)
+                    google_history = []
+                    for m in messages[:-1]:
+                        role = "user" if m["role"] == "user" else "model"
+                        google_history.append({"role": role, "parts": [m["content"]]})
+                    
+                    response = model.generate_content(
+                        messages[-1]["content"],
+                        generation_config=genai.types.GenerationConfig(temperature=0.2),
+                        history=google_history
+                    )
+                    full_response = response.text
 
-            # Post-Process: Extract Keywords
-            keywords = []
-            kw_match = re.search(r'KEYWORDS:\s*(.*)', full_response, re.IGNORECASE)
-            if kw_match:
-                keywords = [k.strip() for k in kw_match.group(1).split(',')]
-                # Remove keywords block from display answer
-                display_answer = full_response[:kw_match.start()].strip()
-            else:
-                display_answer = full_response
+                elif self.provider == "ollama":
+                    self.base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/api/chat")
+                    resp = requests.post(self.base_url, json={
+                        "model": self.model,
+                        "messages": messages,
+                        "stream": False,
+                        "options": {"temperature": 0.2}
+                    })
+                    full_response = resp.json()["message"]["content"]
 
-            # Simple Groundedness Check (Noun/Verb overlap)
-            is_grounded = self._check_groundedness(display_answer, context)
+                break
 
-            return {
-                "answer": display_answer,
-                "keywords": keywords,
-                "is_grounded": is_grounded
-            }
-
-        except Exception as e:
-            error_msg = str(e).lower()
-            print(f"LLM Error: {error_msg}")
-            
-            # Map ugly provider errors to friendly student-facing messages
-            if "429" in error_msg or "rate limit" in error_msg:
-                friendly_message = "I'm currently receiving too many questions at once! Please wait a moment and try asking again."
-            elif "401" in error_msg or "authentication" in error_msg:
-                friendly_message = "There seems to be an issue with my API credentials. Please contact the administrator."
-            else:
-                friendly_message = "I encountered an unexpected error while thinking. Please try rephrasing your question."
+            except Exception as e:
+                error_msg = str(e).lower()
+                print(f"LLM Error (Attempt {attempt+1}/{max_retries}): {error_msg}")
                 
-            return {"answer": friendly_message, "keywords": []}
+                if ("429" in error_msg or "rate limit" in error_msg) and attempt < max_retries - 1:
+                    if self._rotate_groq_key():
+                        continue # Retry immediately with new key
+                    
+                    print(f"Rate limit hit. Retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+                
+                friendly_message = "I encountered an error while thinking. Please try again."
+                if "429" in error_msg:
+                    friendly_message = "I'm currently receiving too many questions. Please wait a moment."
+                
+                return {"answer": friendly_message, "keywords": []}
+
+        # Post-Process: Extract Keywords
+        keywords = []
+        kw_match = re.search(r'KEYWORDS:\s*(.*)', full_response, re.IGNORECASE)
+        if kw_match:
+            keywords = [k.strip() for k in kw_match.group(1).split(',')]
+            # Remove keywords block from display answer
+            display_answer = full_response[:kw_match.start()].strip()
+        else:
+            display_answer = full_response
+
+        # Simple Groundedness Check (Noun/Verb overlap)
+        is_grounded = self._check_groundedness(display_answer, context)
+
+        return {
+            "answer": display_answer,
+            "keywords": keywords,
+            "is_grounded": is_grounded
+        }
 
     def extract_toc(self, text: str) -> List[Dict[str, Any]]:
         """Extracts a structured Table of Contents from raw text using the LLM."""
@@ -156,36 +216,60 @@ class LLMService:
             {"role": "user", "content": f"Extract TOC from this text:\n\n{text[:8000]}"} # Send first 8k chars
         ]
 
-        try:
-            if self.provider == "groq" or self.provider == "openai":
-                completion = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=0.1,
-                    response_format={ "type": "json_object" } if self.provider == "openai" else None
-                )
-                raw_content = completion.choices[0].message.content
-            
-            elif self.provider == "ollama":
-                resp = requests.post(self.base_url, json={
-                    "model": self.model,
-                    "messages": messages,
-                    "stream": False,
-                    "format": "json"
-                })
-                raw_content = resp.json()["message"]["content"]
+        max_retries = 3
+        retry_delay = 2
 
-            # Parse JSON from response
-            # Sometimes LLMs wrap JSON in code blocks
-            json_match = re.search(r'\[.*\]', raw_content, re.DOTALL)
-            if json_match:
-                return json.loads(json_match.group(0))
-            
-            return json.loads(raw_content)
+        for attempt in range(max_retries):
+            try:
+                raw_content = ""
+                if self.provider == "groq" or self.provider == "openai":
+                    if not self.client: return []
+                    completion = self.client.chat.completions.create(
+                        model=self.model,
+                        messages=messages,
+                        temperature=0.1,
+                        response_format={ "type": "json_object" } if self.provider == "openai" else None
+                    )
+                    raw_content = completion.choices[0].message.content
+                
+                elif self.provider == "google":
+                    if not genai: return []
+                    model = genai.GenerativeModel(self.model)
+                    response = model.generate_content(
+                        f"{system_prompt}\n\nExtract TOC from this text:\n\n{text[:8000]}",
+                        generation_config=genai.types.GenerationConfig(temperature=0.1)
+                    )
+                    raw_content = response.text
 
-        except Exception as e:
-            print(f"Error extracting TOC: {e}")
-            return []
+                elif self.provider == "ollama":
+                    resp = requests.post(self.base_url, json={
+                        "model": self.model,
+                        "messages": messages,
+                        "stream": False,
+                        "format": "json"
+                    })
+                    raw_content = resp.json()["message"]["content"]
+
+                # Parse JSON from response
+                json_match = re.search(r'\[.*\]', raw_content, re.DOTALL)
+                if json_match:
+                    return json.loads(json_match.group(0))
+                
+                return json.loads(raw_content)
+
+            except Exception as e:
+                error_msg = str(e).lower()
+                if ("429" in error_msg or "rate limit" in error_msg) and attempt < max_retries - 1:
+                    if self._rotate_groq_key():
+                        continue # Retry immediately with new key
+                    
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+                print(f"Error extracting TOC: {e}")
+                return []
+        
+        return []
 
     def _check_groundedness(self, answer: str, context: str) -> bool:
         """Simple check to see if key factual terms in answer exist in context."""
