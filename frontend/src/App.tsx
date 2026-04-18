@@ -3,6 +3,9 @@ import { Upload, Send, BookOpen, Bot, Loader2, RotateCcw, Layers, ScrollText } f
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
+// Configure Production API URL
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || '/api';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
