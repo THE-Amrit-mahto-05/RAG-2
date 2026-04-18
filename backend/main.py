@@ -18,8 +18,8 @@ from backend.services.semantic_cache import SemanticCache
 
 import traceback # For detailed error logging
 
-# Load environment variables
-load_dotenv()
+# Load environment variables (Forced override to pick up settings from .env)
+load_dotenv(override=True)
 
 app = FastAPI(title="Edulevel RAG AI Tutor API")
 
@@ -129,35 +129,37 @@ async def get_toc(topic_id: str):
     toc = []
     seen = set()
     
-    # --- STAGE 1: Decimal Pattern Discovery (e.g. 1.1, 11.2) ---
+    # --- STAGE 1: Numbered Pattern Discovery (e.g. 1., 1.1, 11.2) ---
     for chunk in chunks:
         text = chunk["text"]
-        for match in re.finditer(r'(?:^|\n)[ \t]*(?!Fig\.|Figure\s|Table\s)(\d+\.\d+(?:\.\d+)?)[ \t]+([^\n]{4,85})', text, re.IGNORECASE):
+        # Pattern: Start of line, Optional whitespace, Number (e.g. 1 or 1.1), Period (mandatory for single digits, optional for decimals), Space, Title
+        for match in re.finditer(r'(?:^|\n)[ \t]*(?!Fig\.|Figure\s|Table\s)(\d+(?:\.\d+)*)\.?[ \t]+([^\n]{4,85})', text, re.IGNORECASE):
             section_num = match.group(1)
             raw_title = match.group(2).strip().rstrip('.')
-            if section_num in seen or len(raw_title) < 4: continue
+            # Avoid picking up lowercase sentence starts that look like numbers
+            if section_num in seen or len(raw_title) < 4 or raw_title[0].islower(): continue
             toc.append({"section": section_num, "title": raw_title.title(), "page": chunk["page"]})
             seen.add(section_num)
     
-    # Sort by section number correctly (handling arbitrary lengths)
     # --- STAGE 2: Formatting-Based Discovery (Headers with colons or ALL-CAPS) ---
-    if len(toc) < 3:
-        for chunk in chunks:
-            text = chunk["text"]
-            for match in re.finditer(r'(?:^|\n)\s*([A-Z][A-Za-z\s]{5,40}:|[A-Z]{5,40}(?:\s+[A-Z]{2,})*)\s*(?:\n|$)', text):
-                raw_title = match.group(1).strip().rstrip(':')
-                if raw_title.lower() in [t["title"].lower() for t in toc] or len(raw_title) < 5:
-                    continue
-                toc.append({
-                    "section": str(len(toc) + 1),
-                    "title": raw_title.title() if not raw_title.isupper() else raw_title,
-                    "page": chunk["page"]
-                })
-                if len(toc) >= 10: break
-            if len(toc) >= 10: break
+    # We always run this to find major chapter divisions, even if Stage 1 found some
+    for chunk in chunks:
+        text = chunk["text"]
+        # Pattern: ALL-CAPS headers or Titles ending with colons
+        for match in re.finditer(r'(?:^|\n)\s*([A-Z][A-Za-z\s]{5,40}:|[A-Z]{5,40}(?:\s+[A-Z]{2,})*)\s*(?:\n|$)', text):
+            raw_title = match.group(1).strip().rstrip(':')
+            if raw_title.lower() in [t["title"].lower() for t in toc] or len(raw_title) < 5:
+                continue
+            toc.append({
+                "section": str(len(toc) + 1),
+                "title": raw_title.title() if not raw_title.isupper() else raw_title,
+                "page": chunk["page"]
+            })
+            if len(toc) >= 50: break
+        if len(toc) >= 50: break
 
     # --- STAGE 3: LLM Semantic Discovery (The "Smart" Fallback) ---
-    if len(toc) < 3:
+    if len(toc) < 5:
         print("DEBUG: TOC sparse. Triggering LLM-assisted Discovery...")
         try:
             combined_text = "\n".join([c["text"] for c in chunks[:5]])

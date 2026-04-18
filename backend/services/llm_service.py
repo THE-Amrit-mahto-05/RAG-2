@@ -47,8 +47,8 @@ class LLMService:
                 self.client = None
             else:
                 self.client = Groq(api_key=self.groq_keys[0])
-                self.model = model or "llama-3.3-70b-versatile"
-                print(f"Initialized Groq with {len(self.groq_keys)} available keys. Active: Key 1")
+                self.model = model or "llama-3.1-8b-instant"
+                print(f"Initialized Groq with {len(self.groq_keys)} available keys. Model: {self.model}")
         
         elif provider == "google":
             if not genai:

@@ -184,7 +184,7 @@ const App: React.FC = () => {
                </p>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-200px)] scrollbar-thin pr-2">
               {toc.map((t, i) => (
                 <div
                   key={i}
@@ -256,9 +256,17 @@ const App: React.FC = () => {
                       }
                     </div>
                     {msg.image && (
-                      <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-2 shadow-sm inline-block">
-                        <img src={msg.image.url} alt={msg.image.title} className="max-w-md rounded-lg" />
-                        <p className="text-xs text-center text-slate-500 mt-2 italic font-medium px-2 pb-1">{msg.image.title}</p>
+                      <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden bg-white p-3 shadow-md inline-block max-w-[90%]">
+                        <div className="text-[10px] text-indigo-500 font-bold mb-2 uppercase tracking-tight">Textbook Figure:</div>
+                        <img 
+                          src={msg.image.url} 
+                          alt={msg.image.title || "Textbook Diagram"} 
+                          className="max-w-full h-auto rounded-lg border border-slate-100" 
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                        />
+                        <p className="text-xs text-slate-500 mt-2 italic font-medium leading-snug">
+                          {msg.image.title || "Relevant diagram retrieved from the chapter core concepts."}
+                        </p>
                       </div>
                     )}
                   </motion.div>

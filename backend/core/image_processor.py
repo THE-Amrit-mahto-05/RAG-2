@@ -101,21 +101,35 @@ class ImageProcessor:
                     if cluster_info["count"] < 3 and (rect.width < 100 or rect.height < 60):
                         continue
                         
-                    if rect.width / rect.height > 10 or rect.height / rect.width > 10: 
-                        continue # Skip long separator lines
-                    
-                    # Ensure we don't grab something massive
-                    if rect.width > page.rect.width * 0.9 or rect.height > page.rect.height * 0.8:
+                    if rect.height == 0 or rect.width == 0:
                         continue
                     
-                    # Render the cluster
-                    pix = page.get_pixmap(clip=rect, dpi=150)
+                    aspect_ratio = rect.width / rect.height
+                    if aspect_ratio > 10 or aspect_ratio < 0.1: 
+                        continue # Skip long lines/thin bars
+                        
+                    # Find caption FIRST to guide filtering
+                    caption = self._find_caption(blocks, rect, CAPTION_KEYWORDS, i)
+                    has_real_caption = any(kw.lower() in caption.lower() for kw in ["figure", "fig", "diagram", "illustration", "table"])
                     
-                    # Variance check for vector renders too
+                    # QR Code Filter: NCERT QR codes are small, almost perfect squares, and lack "Fig" captions
+                    is_square = 0.95 < aspect_ratio < 1.05
+                    if is_square and rect.width < 180 and not has_real_caption:
+                        continue 
+                        
+                    if rect.width > page.rect.width * 0.92 or rect.height > page.rect.height * 0.85:
+                        continue
+
+                    # Render the cluster with forced white background
+                    pix = page.get_pixmap(clip=rect, dpi=150, alpha=False)
+                    
+                    # Variance check
                     try:
                         pil_img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                         stat = ImageStat.Stat(pil_img.convert("L"))
-                        if stat.stddev[0] < 12.0: # Vectors need slightly higher variance to be useful
+                        # Relax threshold if we have a strong caption (scientific diagrams can be thin lines)
+                        variance_threshold = 7.0 if has_real_caption else 13.0
+                        if stat.stddev[0] < variance_threshold:
                             continue
                     except: pass
 
@@ -123,13 +137,12 @@ class ImageProcessor:
                     image_path = os.path.join(topic_dir, image_filename)
                     pix.save(image_path)
                     
-                    caption = self._find_caption(blocks, rect, CAPTION_KEYWORDS, i)
                     extracted_images.append({
                         "id": f"img_{image_count}",
                         "path": image_path,
                         "url": f"/api/images/{topic_id}/{image_filename}",
                         "page": i + 1,
-                        "title": f"Scientific Diagram - Page {i+1}",
+                        "title": caption[:100],
                         "description": caption
                     })
                     image_count += 1
