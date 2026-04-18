@@ -65,8 +65,8 @@ async def root_check():
 async def health_check():
     return {"status": "healthy"}
 
-# Include the router BEFORE mounts to ensure precedence
-app.include_router(router)
+# (Router inclusion moved to the end of routes)
+
 
 # Serve images statically
 app.mount("/images", StaticFiles(directory=IMAGE_DIR), name="images")
@@ -275,7 +275,11 @@ async def chat(request: ChatRequest):
         confidence=confidence
     )
 
+# Include the router AFTER all routes are defined
+app.include_router(router)
+
 if __name__ == "__main__":
+
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
