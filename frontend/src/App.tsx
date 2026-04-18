@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
 // Configure Production API URL
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = (import.meta.env.VITE_API_URL as string) || '/api';
+axios.defaults.baseURL = API_URL;
 
 interface Message {
   role: 'user' | 'assistant';
