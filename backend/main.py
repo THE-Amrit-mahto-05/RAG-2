@@ -14,6 +14,7 @@ from backend.services.vector_store import VectorStore
 from backend.services.retrieval_engine import RetrievalEngine
 from backend.services.image_matcher import ImageMatcher
 from backend.services.llm_service import LLMService
+from backend.services.semantic_cache import SemanticCache
 
 # Load environment variables
 load_dotenv()
@@ -53,6 +54,7 @@ retrieval_engine = RetrievalEngine(embedding_service, vector_store)
 image_matcher = ImageMatcher(IMAGE_DIR)
 pdf_processor = PDFProcessor()
 image_processor = ImageProcessor(IMAGE_DIR)
+semantic_cache = SemanticCache(data_dir="backend/data/cache", max_size=60)
 
 # PHASE 4 REFINEMENT: Initialize with dynamic provider
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
@@ -170,6 +172,11 @@ async def chat(request: ChatRequest):
     topic_path = os.path.join(TOPICS_DIR, topic_id)
     if not os.path.exists(topic_path):
         raise HTTPException(status_code=400, detail="Topic index not found. Please upload the file again.")
+        
+    # 0. Check Semantic Cache
+    cached_data = semantic_cache.get(topic_id, question, embedding_service)
+    if cached_data:
+        return ChatResponse(**cached_data)
     
     # 1. Advanced Retrieval (Phase 3 improvements)
     retrieved_results = retrieval_engine.retrieve_context(topic_id, question)
@@ -205,6 +212,15 @@ async def chat(request: ChatRequest):
         confidence = sum(s.similarity for s in sources) / len(sources)
         if not generation.get("is_grounded", True):
             confidence *= 0.5
+            
+    # Cache the generated response
+    response_data = {
+        "answer": answer,
+        "image": best_image,
+        "sources": [s.dict() for s in sources],
+        "confidence": confidence
+    }
+    semantic_cache.put(topic_id, question, response_data, embedding_service)
     
     return ChatResponse(
         answer=answer,
