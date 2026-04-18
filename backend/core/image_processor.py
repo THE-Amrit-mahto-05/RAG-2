@@ -71,20 +71,26 @@ class ImageProcessor:
                 # Group nearby drawings into clusters
                 clusters = []
                 for d in drawings:
-                    rect = d["rect"]
+                    rect = fitz.Rect(d["rect"])
                     # Ignore extremely small/thin lines that are likely underlines
-                    if rect.width < 20 and rect.height < 20: continue
+                    if rect.width < 10 and rect.height < 10: continue
                     if rect.width > 500 or rect.height > 600: continue # Likely a border
                     
                     added = False
                     for cluster in clusters:
-                        # If drawing is close to existing cluster, merge it
-                        if cluster.distance_to(rect) < 50: 
+                        # Rect objects in PyMuPDF don't have a direct distance_to method.
+                        # We calculate distance between centers as a heuristic for clustering.
+                        c1 = ((cluster.x0 + cluster.x1) / 2, (cluster.y0 + cluster.y1) / 2)
+                        c2 = ((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
+                        dist = ((c1[0] - c2[0])**2 + (c1[1] - c2[1])**2)**0.5
+                        
+                        # If drawing is close to existing cluster or intersects, merge it
+                        if dist < 80 or cluster.intersects(rect): 
                             cluster.include_rect(rect)
                             added = True
                             break
                     if not added:
-                        clusters.append(fitz.Rect(rect))
+                        clusters.append(rect)
 
                 for rect in clusters:
                     # Filter out small artifacts or header lines
