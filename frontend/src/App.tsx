@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Send, BookOpen, Bot, Loader2, RotateCcw, Layers, ScrollText } from 'lucide-react';
+import { Upload, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
