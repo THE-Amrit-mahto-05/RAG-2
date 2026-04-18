@@ -148,10 +148,14 @@ async def get_toc(topic_id: str):
     # --- STAGE 3: LLM Semantic Discovery (The "Smart" Fallback) ---
     if len(toc) < 3:
         print("DEBUG: TOC sparse. Triggering LLM-assisted Discovery...")
-        combined_text = "\n".join([c["text"] for c in chunks[:5]])
-        llm_toc = llm_service.extract_toc(combined_text)
-        if llm_toc:
-            toc = llm_toc
+        try:
+            combined_text = "\n".join([c["text"] for c in chunks[:5]])
+            llm_toc = llm_service.extract_toc(combined_text)
+            if llm_toc:
+                toc = llm_toc
+        except Exception as e:
+            print(f"WARNING: LLM-assisted TOC discovery failed (possible rate limit): {e}")
+            # Continue with existing 'toc' (even if sparse or empty) instead of crashing with 500 error
 
     # Sort and return
     try:

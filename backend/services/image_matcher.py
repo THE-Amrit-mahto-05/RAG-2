@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import numpy as np
 from typing import Optional
 from backend.services.embedding_service import EmbeddingService
@@ -32,6 +33,19 @@ class ImageMatcher:
         try:
             image_embeddings = np.load(embeddings_path)
             
+            # --- Keyword Boost Logic ---
+            # If the query contains discrete keywords, check for direct occurrences in descriptions
+            words_in_query = set(re.findall(r'\b\w+\b', query_response.lower()))
+            keyword_match_idx = -1
+            max_kw_overlap = 0
+
+            for idx, meta in enumerate(images_metadata):
+                desc_words = set(re.findall(r'\b\w+\b', meta["description"].lower()))
+                overlap = len(words_in_query.intersection(desc_words))
+                if overlap > max_kw_overlap:
+                    max_kw_overlap = overlap
+                    keyword_match_idx = idx
+
             # Semantic search
             query_embedding = embedding_service.get_query_embedding(query_response).flatten()
             
@@ -39,6 +53,10 @@ class ImageMatcher:
                 np.linalg.norm(image_embeddings, axis=1) * np.linalg.norm(query_embedding)
             )
             
+            # Boost the score if we found a strong keyword overlap
+            if keyword_match_idx != -1:
+                similarities[keyword_match_idx] += (max_kw_overlap * 0.15) 
+
             best_idx = int(np.argmax(similarities))
             best_score = float(similarities[best_idx])
             

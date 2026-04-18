@@ -68,34 +68,45 @@ class ImageProcessor:
             # --- STAGE 2: Vector Graphics (Drawings) Clustering ---
             drawings = page.get_drawings()
             if drawings:
+                page_area = page.rect.width * page.rect.height
                 # Group nearby drawings into clusters
-                clusters = []
+                clusters = [] # list of {"rect": Rect, "count": int}
+                
                 for d in drawings:
                     rect = fitz.Rect(d["rect"])
-                    # Ignore extremely small/thin lines that are likely underlines
+                    # Ignore tiny lines or giant background rectangles (>20% page area)
                     if rect.width < 10 and rect.height < 10: continue
-                    if rect.width > 500 or rect.height > 600: continue # Likely a border
+                    if (rect.width * rect.height) > (page_area * 0.20): continue
                     
                     added = False
-                    for cluster in clusters:
-                        # Rect objects in PyMuPDF don't have a direct distance_to method.
-                        # We calculate distance between centers as a heuristic for clustering.
+                    for cluster_info in clusters:
+                        cluster = cluster_info["rect"]
                         c1 = ((cluster.x0 + cluster.x1) / 2, (cluster.y0 + cluster.y1) / 2)
                         c2 = ((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
                         dist = ((c1[0] - c2[0])**2 + (c1[1] - c2[1])**2)**0.5
                         
-                        # If drawing is close to existing cluster or intersects, merge it
-                        if dist < 80 or cluster.intersects(rect): 
+                        # Use a tighter distance for clustering (40px)
+                        if dist < 40 or cluster.intersects(rect): 
                             cluster.include_rect(rect)
+                            cluster_info["count"] += 1
                             added = True
                             break
                     if not added:
-                        clusters.append(rect)
+                        clusters.append({"rect": rect, "count": 1})
 
-                for rect in clusters:
-                    # Filter out small artifacts or header lines
-                    if rect.width < 100 or rect.height < 60: continue
-                    if rect.width / rect.height > 10: continue # Likely a horizontal line
+                for cluster_info in clusters:
+                    rect = cluster_info["rect"]
+                    # Must contain multiple components to be a "diagram" 
+                    # OR be a reasonably sized individual item
+                    if cluster_info["count"] < 3 and (rect.width < 100 or rect.height < 60):
+                        continue
+                        
+                    if rect.width / rect.height > 10 or rect.height / rect.width > 10: 
+                        continue # Skip long separator lines
+                    
+                    # Ensure we don't grab something massive
+                    if rect.width > page.rect.width * 0.9 or rect.height > page.rect.height * 0.8:
+                        continue
                     
                     # Render the cluster
                     pix = page.get_pixmap(clip=rect, dpi=150)

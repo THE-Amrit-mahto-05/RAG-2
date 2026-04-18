@@ -247,7 +247,11 @@ const App: React.FC = () => {
                       {msg.role === 'user' ? 'Student (You):' : 'AI Tutor'}
                     </p>
                     <div className="text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">
-                      {msg.content.replace(/!\[.*?\]\(.*?\)/g, '').replace(/<img[^>]*>/g, '')}
+                      {msg.content
+                        .replace(/!\[.*?\]\(.*?\)/g, '')   // Remove Markdown images
+                        .replace(/\[.*?\]\(.*?\)/g, '')    // Remove Markdown links (hallucination safeguard)
+                        .replace(/<img[^>]*>/g, '')         // Remove HTML images
+                      }
                     </div>
                     {msg.image && (
                       <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-2 shadow-sm inline-block">

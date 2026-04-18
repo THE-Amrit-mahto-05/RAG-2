@@ -82,23 +82,26 @@ class LLMService:
         """Generates a contextualized response with a groundedness check."""
         
         if not has_context:
-            system_prompt = """You are a friendly AI tutor for an educational textbook chapter. 
+            system_prompt = """You are a friendly AI tutor for an educational textbook. 
             The student is chatting with you but no specific chapter context was retrieved. 
             Respond briefly, stating that you can only answer questions related to the loaded textbook chapter. Do not provide outside knowledge.
-            IMPORTANT: Do not generate links, markdown images, or QR codes.
+            CRITICAL: Do not generate any URLs, markdown links [text](url), or QR codes.
             """.strip()
         else:
             system_prompt = """
             You are an expert, friendly AI tutor. Your goal is to explain concepts clearly from the provided textbook context.
             
-            RULES:
-            1. STRICT GROUNDING: You MUST ONLY use the provided textbook context. Do not use any outside or general knowledge. If the context does not contain the answer, simply say: "I cannot find this information in the textbook."
-            2. You MUST include inline citations using exactly this format: [Source: Page X].
-            3. Format answers clearly with line breaks between paragraphs.
-            4. Do not generate links, markdown images, or QR codes. Provide a clear text explanation.
-            5. MUST end your response exactly with this format:
-            KEYWORDS: word1, word2, word3
-            (Pick 3 main topics from the answer)
+            STRICT RULES:
+            1. GROUNDING: You MUST ONLY use the provided context. Do not use outside knowledge. If the context is missing info, say: "I cannot find this in the textbook."
+            2. CITATIONS: You MUST include inline citations using exactly this format: [Source: Page X].
+            3. NO LINKS: Do not generate ANY URLs, markdown links [text](url), placeholder images, or QR codes. Use only plain text explanations.
+            4. PEDAGOGY: Use helpful analogies from the text. For example, explain Inertia using the "bus starting or stopping" analogy if the context relates to motion.
+            
+            OUTPUT FORMAT:
+            - Provide the explanation first.
+            - MUST end your response exactly with this tag:
+            IMAGE_KEYWORDS: [keyword1, keyword2]
+            (Pick 2-3 specific nouns that represent the best diagram for this answer, e.g., [bus inertia], [friction surface], [longitudinal wave])
             """.strip()
 
         messages = [{"role": "system", "content": system_prompt}]
@@ -174,12 +177,17 @@ class LLMService:
                 
                 return {"answer": friendly_message, "keywords": []}
 
-        # Post-Process: Extract Keywords
+        # Post-Process: Extract Keywords for Image Matching
         keywords = []
-        kw_match = re.search(r'KEYWORDS:\s*(.*)', full_response, re.IGNORECASE)
+        # Support both IMAGE_KEYWORDS: [a, b] and legacy KEYWORDS: a, b
+        kw_match = re.search(r'IMAGE_KEYWORDS:\s*\[(.*?)\]', full_response, re.IGNORECASE)
+        if not kw_match:
+            kw_match = re.search(r'KEYWORDS:\s*(.*)', full_response, re.IGNORECASE)
+
         if kw_match:
-            keywords = [k.strip() for k in kw_match.group(1).split(',')]
-            # Remove keywords block from display answer
+            raw_kws = kw_match.group(1)
+            keywords = [k.strip() for k in raw_kws.split(',')]
+            # Remove the keywords/metadata block from the display answer
             display_answer = full_response[:kw_match.start()].strip()
         else:
             display_answer = full_response
