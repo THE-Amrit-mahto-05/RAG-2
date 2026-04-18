@@ -1,4 +1,4 @@
-# 🎓 Edulevel — AI-Powered RAG Textbook Tutor
+# Edulevel — AI-Powered RAG Textbook Tutor
 
 > Upload any textbook chapter as a PDF. Get instant, context-grounded AI explanations with matching textbook figures.
 
@@ -9,22 +9,22 @@
 
 ---
 
-## ✨ Features
+## Features
 
 | Feature | Description |
 |---|---|
-| 📄 **PDF Intelligence** | Upload any textbook chapter — text, diagrams and figures are all extracted automatically |
-| 🧠 **RAG Pipeline** | Hybrid semantic + keyword retrieval with re-ranking for highly accurate, grounded answers |
-| 🖼️ **Figure Carousel** | Up to 3 contextually relevant textbook figures shown per answer, matched by page context |
-| 📚 **Chapter Navigator** | Auto-generated Table of Contents from the PDF for one-click topic exploration |
-| 🛡️ **Hallucination Guard** | Every answer is validated against source chunks — no making things up |
-| ⚡ **Fast Startup** | Lazy-loaded embeddings, CPU-only PyTorch — runs on free-tier hosting without timeouts |
-| 🔑 **Multi-Key Rotation** | Automatic Groq API key rotation to handle rate limits gracefully |
-| 💾 **Semantic Cache** | Repeated questions return instantly without hitting the LLM again |
+| **PDF Intelligence** | Upload any textbook chapter — text, diagrams and figures are all extracted automatically |
+| **RAG Pipeline** | Hybrid semantic + keyword retrieval with re-ranking for highly accurate, grounded answers |
+| **Figure Carousel** | Up to 3 contextually relevant textbook figures shown per answer, matched by page context |
+| **Chapter Navigator** | Auto-generated Table of Contents from the PDF for one-click topic exploration |
+| **Hallucination Guard** | Every answer is validated against source chunks — no making things up |
+| **Fast Startup** | Lazy-loaded embeddings, CPU-only PyTorch — runs on free-tier hosting without timeouts |
+| **Multi-Key Rotation** | Automatic Groq API key rotation to handle rate limits gracefully |
+| **Semantic Cache** | Repeated questions return instantly without hitting the LLM again |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 Student uploads PDF
@@ -48,7 +48,7 @@ Student asks question
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 **Backend**
 - [FastAPI](https://fastapi.tiangolo.com) — API framework
@@ -65,7 +65,7 @@ Student asks question
 
 ---
 
-## 🚀 Quick Start (Local)
+## Quick Start (Local)
 
 ### Prerequisites
 - Python 3.9+
@@ -109,7 +109,7 @@ npm run dev
 
 ---
 
-## ☁️ Deploy to Render (Production)
+## Deploy to Render (Production)
 
 ### Backend (Web Service)
 | Setting | Value |
@@ -130,7 +130,7 @@ Set `VITE_API_URL` to your Render backend URL.
 
 ---
 
-## 🔑 Environment Variables
+## Environment Variables
 
 See [`.env.example`](.env.example) for a full list. The minimum required:
 
@@ -139,7 +139,4 @@ GROQ_API_KEY=your_key_here
 EMBEDDING_PROVIDER=local
 ```
 
----
 
-## 📄 License
-MIT License — Built for the EduLevel Product Engineering Intern Assignment.
