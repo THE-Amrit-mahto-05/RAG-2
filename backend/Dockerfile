@@ -1,24 +1,24 @@
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
+FROM python:3.9
 
-# Set the working directory in the container
+# Create a non-root user for security (Requirement for Hugging Face)
+RUN useradd -m -u 1000 user
+USER user
+ENV PATH="/home/user/.local/bin:$PATH"
+
 WORKDIR /app
 
-# Copy the requirements file into the container
-COPY requirements.txt .
+# Copy requirements first for better caching
+COPY --chown=user requirements.txt .
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the backend code into the container
-COPY . .
+# Copy the rest of the app
+COPY --chown=user . .
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PORT=7860
 
-# Make port 7860 available to the world outside this container
+# Hugging Face Spaces always listens on 7860
 EXPOSE 7860
 
-# Run main.py when the container launches
 CMD ["python", "main.py"]
