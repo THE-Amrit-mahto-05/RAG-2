@@ -69,13 +69,13 @@ class LLMService:
                 print(f"Initialized OpenAI: {self.model}")
 
     def _rotate_groq_key(self):
-        """Switches to the next available Groq API key if one exists."""
+        """Switches to the next available Groq API key. Returns True if a full cycle is completed."""
         if self.provider == "groq" and len(self.groq_keys) > 1:
             self.current_groq_idx = (self.current_groq_idx + 1) % len(self.groq_keys)
             new_key = self.groq_keys[self.current_groq_idx]
             self.client = Groq(api_key=new_key)
             print(f"🔄 Swapped to Groq Backup Key (Key {self.current_groq_idx + 1})")
-            return True
+            return self.current_groq_idx == 0 # True if we wrapped around to the start
         return False
         
     def generate_answer(self, question: str, context: str, history: List[Dict] = [], has_context: bool = True) -> Dict[str, Any]:
@@ -108,7 +108,7 @@ class LLMService:
         user_prompt = f"Textbook Context:\n{context}\n\nStudent Question: {question}"
         messages.append({"role": "user", "content": user_prompt})
 
-        max_retries = 3
+        max_retries = max(3, len(self.groq_keys) * 3 if self.provider == "groq" else 3)
         retry_delay = 2 # seconds
 
         for attempt in range(max_retries):
@@ -160,12 +160,12 @@ class LLMService:
                 print(f"LLM Error (Attempt {attempt+1}/{max_retries}): {error_msg}")
                 
                 if ("429" in error_msg or "rate limit" in error_msg) and attempt < max_retries - 1:
-                    if self._rotate_groq_key():
-                        continue # Retry immediately with new key
+                    wrapped_around = self._rotate_groq_key()
                     
-                    print(f"Rate limit hit. Retrying in {retry_delay}s...")
-                    time.sleep(retry_delay)
-                    retry_delay *= 2
+                    if wrapped_around or len(self.groq_keys) <= 1:
+                        print(f"Rate limit hit globally. Retrying in {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
                     continue
                 
                 friendly_message = "I encountered an error while thinking. Please try again."
@@ -216,7 +216,7 @@ class LLMService:
             {"role": "user", "content": f"Extract TOC from this text:\n\n{text[:8000]}"} # Send first 8k chars
         ]
 
-        max_retries = 3
+        max_retries = max(3, len(self.groq_keys) * 3 if self.provider == "groq" else 3)
         retry_delay = 2
 
         for attempt in range(max_retries):
@@ -260,11 +260,11 @@ class LLMService:
             except Exception as e:
                 error_msg = str(e).lower()
                 if ("429" in error_msg or "rate limit" in error_msg) and attempt < max_retries - 1:
-                    if self._rotate_groq_key():
-                        continue # Retry immediately with new key
+                    wrapped_around = self._rotate_groq_key()
                     
-                    time.sleep(retry_delay)
-                    retry_delay *= 2
+                    if wrapped_around or len(self.groq_keys) <= 1:
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
                     continue
                 print(f"Error extracting TOC: {e}")
                 return []
