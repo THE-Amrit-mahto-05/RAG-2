@@ -119,7 +119,7 @@ async def get_toc(topic_id: str):
     # --- STAGE 1: Decimal Pattern Discovery (e.g. 1.1, 11.2) ---
     for chunk in chunks:
         text = chunk["text"]
-        for match in re.finditer(r'\b(\d+\.\d+(?:\.\d+)?)\s+([A-Z][A-Za-z\s,\-]{4,60}?)(?=\s{1,3}[A-Z]|Activity|Question|Q\s|\n|\d{3,}|$)', text):
+        for match in re.finditer(r'\b(\d+\.\d+(?:\.\d+)?)\s+([A-Z][A-Za-z\s,\-]{4,60}?)(?=\s{2,}|Activity|Question|Q\s|\n|\d{3,}|$)', text):
             section_num = match.group(1)
             raw_title = match.group(2).strip().rstrip('.')
             if section_num in seen or len(raw_title) < 4: continue

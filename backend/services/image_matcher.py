@@ -19,7 +19,7 @@ class ImageMatcher:
         Dynamically finds the most relevant image using a Semantic approach on the specific uploaded topic's Images.
         """
         topic_dir = os.path.join(self.data_dir, topic_id)
-        metadata_path = os.path.join(topic_dir, "images.json")
+        metadata_path = os.path.join(topic_dir, "metadata.json")
         embeddings_path = os.path.join(topic_dir, "embeddings.npy")
         
         # If the generated PDF directory does not have manually associated images, gracefully return
@@ -33,7 +33,7 @@ class ImageMatcher:
             image_embeddings = np.load(embeddings_path)
             
             # Semantic search
-            query_embedding = embedding_service.get_embedding(query_response)
+            query_embedding = embedding_service.get_query_embedding(query_response).flatten()
             
             similarities = np.dot(image_embeddings, query_embedding) / (
                 np.linalg.norm(image_embeddings, axis=1) * np.linalg.norm(query_embedding)

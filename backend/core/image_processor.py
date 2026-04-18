@@ -27,18 +27,22 @@ class ImageProcessor:
             for img in page.get_images(full=True):
                 xref = img[0]
                 base_image = doc.extract_image(xref)
-                image_bytes = base_image["image"]
                 
                 # Filter by resolution (Ignore tiny icons/bullets)
                 if base_image["width"] < 150 or base_image["height"] < 150:
                     continue
 
-                image_ext = base_image["ext"]
+                # Use Pixmap to enforce RGB color space (fixes blank CMYK images and Separation errors)
+                pix = fitz.Pixmap(doc, xref)
+                if pix.colorspace and pix.colorspace.name not in (fitz.csRGB.name, fitz.csGRAY.name):
+                    pix = fitz.Pixmap(fitz.csRGB, pix)
+                
+                image_ext = "png"
                 image_filename = f"image_{image_count}.{image_ext}"
                 image_path = os.path.join(topic_dir, image_filename)
                 
-                with open(image_path, "wb") as f:
-                    f.write(image_bytes)
+                pix.save(image_path)
+                pix = None # Free memory
 
                 # HEURISTIC: Look for 'Figure X' or 'Diagram' near the image
                 # In PyMuPDF, images have a 'rect' on the page. We check text blocks near that rect.
